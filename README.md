@@ -12,7 +12,7 @@ Extrovert's action takes larger spanning space while doing the similar action he
 This is to make the existing motion slower. Introvert move and act slower than an Extrovert. 
 
 
-Copyright of the code Belong to 
+@Copyright 
 Fabrizio Nunnari
 Daksitha Withanage 
 Fatima Aly
