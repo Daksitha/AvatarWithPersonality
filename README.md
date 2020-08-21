@@ -13,5 +13,4 @@ This is to make the existing motion slower. Introvert move and act slower than a
 
 
 [@Copyright] 
-[Fabrizio Nunnari, Daksitha Withanage 
-Fatima Aly]
+[Fabrizio Nunnari, Daksitha Withanage, Fatima Aly, Chandrika]
