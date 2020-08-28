@@ -10,3 +10,7 @@ Extrovert's action takes larger spanning space while doing the similar action he
 
 ## Time scaling *of selected keyframes*: 
 This is to make the existing motion slower. Introvert move and act slower than an Extrovert. 
+
+
+[@Copyright] 
+[Fabrizio Nunnari, Daksitha Withanage, Fatima Aly, Chandrika]
