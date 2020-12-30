@@ -30,8 +30,11 @@ from mathutils import Euler
 from mathutils import Vector
 import math
 
+gui_status = "ACTIVE_SESSION"
+gui_err_msg = ""
+
 def update_func(self, context):
-    print("my test function", self)
+    #print("my test function", self)
     bpy.ops.cafp.offsetanimation()
 #bpy.types.PoseBone.prop = FloatProperty(default=0.0, description="Change to Update", update=update)
 
@@ -39,61 +42,135 @@ bpy.types.PoseBone.damping_vector = bpy.props.FloatVectorProperty(
         name = "Euler Damping Vector",
         description="damping factor for each axis x,y,z",
         default=(1.0, 1.0, 1.0), 
-        soft_min = 0.1, # float
-        soft_max  = 2.0,
+        soft_min = -10.0, # float
+        soft_max  = 10.0,
         update = update_func
     )
 
-def damp_bone_animation(action: bpy.types.Action, bone_name: str, weights: Vector, tail_crop=0, head_crop=0, start=0) -> None:
+def damp_bone_animation(self, act: bpy.types.Action, bone_name: str, weights: Vector, tail_crop=0, head_crop=0, crop_start=0) -> None:
     """Apply damping effect to the motion
     """
-    curve_w = action.fcurves.find('pose.bones["{0}"].rotation_quaternion'.format(bone_name),index =0)  # type: bpy.types.FCurve
-    curve_x = action.fcurves.find('pose.bones["{0}"].rotation_quaternion'.format(bone_name), index =1)  # type: bpy.types.FCurve
-    curve_y = action.fcurves.find('pose.bones["{0}"].rotation_quaternion'.format(bone_name),index = 2)  # type: bpy.types.FCurve
-    curve_z = action.fcurves.find('pose.bones["{0}"].rotation_quaternion'.format(bone_name),index = 3)  # type: bpy.types.FCurve
+    global gui_status, gui_err_msg
 
-    assert curve_w is not None and curve_x is not None and curve_y is not None and curve_z is not None
+    armature_action = act
+    #all actions in the blender scene 
+    all_actions = bpy.data.actions
+    #CAfP_org_ is the standard prefix for saving the original action
+    #This is important when we apply the changes to the existing action
+    dummy_name ="CAfP_org_{}".format(armature_action.name)
+    dummy_exist_bool =  [act for act in all_actions if act.name.startswith(dummy_name)]
+
+    if not dummy_exist_bool:
+        print("creating a dummy of the original action...")
+        copy_anim = armature_action.copy()
+        copy_anim.name = dummy_name
+        copy_anim.use_fake_user = True
+
+    #The original animation will be used as the base animation. 
+    #all changes will be added to this 
+    #Otherwise changes accumulate and result distrotered fcurve 
+    original_action = bpy.data.actions[dummy_name]
+
+    #base actions
+    base_curve_w = original_action.fcurves.find('pose.bones["{0}"].rotation_quaternion'.format(bone_name),index =0)  # type: bpy.types.FCurve
+    base_curve_x = original_action.fcurves.find('pose.bones["{0}"].rotation_quaternion'.format(bone_name), index =1)  # type: bpy.types.FCurve
+    base_curve_y = original_action.fcurves.find('pose.bones["{0}"].rotation_quaternion'.format(bone_name),index = 2)  # type: bpy.types.FCurve
+    base_curve_z = original_action.fcurves.find('pose.bones["{0}"].rotation_quaternion'.format(bone_name),index = 3)  # type: bpy.types.FCurve
+    #these are the curves to be changed 
+    curve_w = armature_action.fcurves.find('pose.bones["{0}"].rotation_quaternion'.format(bone_name),index =0)  # type: bpy.types.FCurve
+    curve_x = armature_action.fcurves.find('pose.bones["{0}"].rotation_quaternion'.format(bone_name), index =1)  # type: bpy.types.FCurve
+    curve_y = armature_action.fcurves.find('pose.bones["{0}"].rotation_quaternion'.format(bone_name),index = 2)  # type: bpy.types.FCurve
+    curve_z = armature_action.fcurves.find('pose.bones["{0}"].rotation_quaternion'.format(bone_name),index = 3)  # type: bpy.types.FCurve
+
+    #We don't need to check both sets of curves belwo.  
+    if(curve_w is None and curve_x is None and curve_y is None and curve_z is None and \
+        base_curve_w is None and base_curve_x is None and base_curve_y is None and base_curve_z is None):
+
+        self.report({'ERROR'},"Selected bone has no animation data,pick a bone with animation data")
+        gui_status = 'ERROR_SESSION'
+        gui_err_msg = 'Selected bone has no animation data, pick a bone with animation data'
+        return 
+    else:
+        gui_status = 'ACTIVE_SESSION'
+
 
     # STRONG ASSUMPTION!!!
     # If there is 1 keyframe for the w curve (0) there will be also for the other curves.
+    base_kf_w = len(curve_w.keyframe_points)
+    base_kf_x = len(curve_x.keyframe_points)
+    base_kf_y = len(curve_y.keyframe_points)
+    base_kf_z = len(curve_z.keyframe_points)
+    #action curves
     n_keyframes_w = len(curve_w.keyframe_points)
     n_keyframes_x = len(curve_x.keyframe_points)
     n_keyframes_y = len(curve_y.keyframe_points)
     n_keyframes_z = len(curve_z.keyframe_points)
 
-    assert n_keyframes_w == n_keyframes_x == n_keyframes_y == n_keyframes_z
+    #assert n_keyframes_w == n_keyframes_x == n_keyframes_y == n_keyframes_z == base_kf_w == base_kf_x == base_kf_y == base_kf_z
+    if not (n_keyframes_w == n_keyframes_x == n_keyframes_y == \
+        n_keyframes_z == base_kf_w == base_kf_x == base_kf_y == base_kf_z):
+        self.report({'ERROR'}, 'All Fcurves for {} must have {} equal number of keyframes'.format(armature_action.name,n_keyframes_w))
+        gui_status = 'ERROR_SESSION'
+        gui_err_msg = 'All Fcurves for {} must have {} equal number of keyframes'.format(armature_action.name,n_keyframes_w)
+        return 
+    else:
+        gui_status = 'ACTIVE_SESSION'
+
 
     #Select the range of the animation
-    minKeyframe = start+tail_crop
-    maxKeyframe = (n_keyframes_w) - head_crop
+    if( (crop_start+tail_crop <n_keyframes_w-crop_start) and \
+        (n_keyframes_w-crop_start > head_crop) ):
+        minKeyframe = crop_start+tail_crop
+        maxKeyframe = (n_keyframes_w) - head_crop
+        #self.report({'INFO'}, "Damping effect applies to keyframes from {0} till {1}".format(minKeyframe,maxKeyframe))
+    else:
+        minKeyframe = 0
+        maxKeyframe = n_keyframes_w
+        self.report({'WARNING'}, "Unexpected keyframe crop, applying to all keyframes from {} till {}".format(minKeyframe,maxKeyframe) ) 
+
 
     for i in range(minKeyframe,maxKeyframe):
+
+        base_kf_w = base_curve_w.keyframe_points[i]  # type: bpy.types.Keyframe
+        base_kf_x = base_curve_x.keyframe_points[i]  # type: bpy.types.Keyframe
+        base_kf_y = base_curve_y.keyframe_points[i]  # type: bpy.types.Keyframe
+        base_kf_z = base_curve_z.keyframe_points[i]  # type: bpy.types.Keyframe
+
         kf_w = curve_w.keyframe_points[i]  # type: bpy.types.Keyframe
         kf_x = curve_x.keyframe_points[i]  # type: bpy.types.Keyframe
         kf_y = curve_y.keyframe_points[i]  # type: bpy.types.Keyframe
         kf_z = curve_z.keyframe_points[i]  # type: bpy.types.Keyframe
 
         # All the time stamps should be the same
-        timestamp = kf_w.co[0]
+        #timestamp = kf_w.co[0]
+        #print("timestamp kf: {}".format(timestamp))
 
-        assert kf_w.co[0] == kf_x.co[0] == kf_y.co[0] == kf_z.co[0]
+        if not(kf_w.co[0] == kf_x.co[0] == kf_y.co[0] == kf_z.co[0]== base_kf_w.co[0] == \
+            base_kf_x.co[0] == base_kf_y.co[0] == base_kf_z.co[0]):
+            self.report({'ERROR'}, '{} keyframe missing in one of the FCurves'.format(kf_w.co[0]))
+            gui_status = 'ERROR_SESSION'
+            gui_err_msg = '{} keyframe missing in one of the FCurves'.format(kf_w.co[0])
+            return 
+        else:
+            gui_status = 'ACTIVE_SESSION'
 
-        # Retrieve the current roation
-        current_q = Quaternion((kf_w.co[1], kf_x.co[1], kf_y.co[1], kf_z.co[1]))
+
+        # Retrieve the base roation
+        current_q = Quaternion((base_kf_w.co[1], base_kf_x.co[1], base_kf_y.co[1], base_kf_z.co[1]))
         current_eulr = current_q.to_euler()
         
         #Element-wise multiplication with a weight vector
         new_euler = Euler((x * y for x, y in zip( weights,current_eulr )), 'XYZ')
         new_q = new_euler.to_quaternion()
         
-        #store it back
+        #update armature action
         kf_w.co[1], kf_x.co[1], kf_y.co[1], kf_z.co[1] = new_q
 
     # Force timings and handles update
     curve_w.update()
     curve_x.update()
     curve_y.update()
-    curve_z.update()
+    curve_z.update() 
 
 
 
@@ -132,23 +209,19 @@ class OffsetAnimation(bpy.types.Operator):
             return {'CANCELLED'}
     
         #active item 
-        #item = obj.data.bones.active
-        #print("item_activate: {}".format(item.basename))
-        #print("item_activate children: {}".format(item.children_recursive_basename))
-        #print("item_activate parent: {}".format(item.parent_recursive))
-
         active_bone = bpy.context.active_pose_bone
         bone_name = active_bone.basename
+
         #animation
-        #TODO: mkeep the original animation and alter every changes from the original
+        #TODO: keep the original animation and alter every changes from the original
         action = obj.animation_data.action
+
         if active_bone is not None:
             
             weights = active_bone.damping_vector
             if action is not None:
-                
-                #weights = Vector((1,1,1))
-                damp_bone_animation(action, bone_name, weights) 
+                damp_bone_animation(self, action, bone_name, weights)
+
             else:
                 self.report({'ERROR'},"Armature {0} has no animation data".format(obj))
                 return {'CANCELLED'}
@@ -170,25 +243,38 @@ class VIEW3D_PT_cafpmainpanle(bpy.types.Panel):
     def draw(self, context):
         layout = self.layout
         active_bone = bpy.context.active_pose_bone
+        global gui_err_msg, gui_status
+
+        box_info = self.layout.box()
+        box_info.label(text="Animation editor for armature")
+
 
         if context.mode == 'POSE':
-            row = layout.row()
-            box = row.box()
-            box.label(text = "Animation:")
-            box.operator(OffsetAnimation.bl_idname, text="Get animation details")
-            
-            layout.row()
-            row2 = layout.row()
-            box2 = row2.box()
-            box2.label(text = "Damping:")
-            if active_bone is not None: 
-                box2.prop(active_bone, "damping_vector",toggle=True)
-            else: 
-                infor_messsage = box2.row()
-                infor_messsage.label(text= "select a single bone")
+
+            if gui_status == "ERROR_SESSION":
+                box_err = self.layout.box()
+                box_err.label(text=gui_err_msg, icon="INFO")
+
+                row = layout.row()
+                box = row.box()
+                box.label(text = "Animation:")
+                box.operator(OffsetAnimation.bl_idname, text="back")
+
+            if gui_status == "ACTIVE_SESSION":
+
+                
+                layout.row()
+                row2 = layout.row()
+                box2 = row2.box()
+                box2.label(text = "Damping:")
+                if active_bone is not None: 
+                    box2.prop(active_bone, "damping_vector",toggle=True)
+                else: 
+                    infor_messsage = box2.row()
+                    infor_messsage.label(text= "select a single bone")
 
         else:
-            layout.label(text = 'Please go to the Pose mode') 
+            layout.label(text = 'Please go to the Pose mode',icon="INFO") 
             
 
         
