@@ -19,219 +19,110 @@ bl_info = {
     "version" : (0, 0, 1),
     "location" : "View3D",
     "warning" : "",
-    "category" : "Generic"
+    "category" : "Animation"
 }
 
 import bpy 
 from bpy.utils import unregister_class
 from bpy.utils import register_class
-from mathutils import Quaternion
-from mathutils import Euler
-from mathutils import Vector
-import math
 
-gui_status = "ACTIVE_SESSION"
-gui_err_msg = ""
+#from . damping_tools import DampAnimation
+#from . offset_tools import AngularOffsetAnimation
+from . bone_motion import BoneAnimatorOffDamp
 
-def update_func(self, context):
-    #print("my test function", self)
-    bpy.ops.cafp.offsetanimation()
-#bpy.types.PoseBone.prop = FloatProperty(default=0.0, description="Change to Update", update=update)
+#all global variables are shared accross using Singletone method 
+import CAfP.global_config as global_config
 
-bpy.types.PoseBone.damping_vector = bpy.props.FloatVectorProperty(
-        name = "Euler Damping Vector",
-        description="damping factor for each axis x,y,z",
-        default=(1.0, 1.0, 1.0), 
-        soft_min = -10.0, # float
-        soft_max  = 10.0,
-        update = update_func
+
+def update_bone_animation(self, context):
+    print("bone animator", self)
+    bpy.ops.cafp.boneanimator()
+    
+
+
+#Define custome property for PoseBone 
+# bpy.types.PoseBone.damping_vector = bpy.props.FloatVectorProperty(
+#         name = "Bone Damping Vector",
+#         description="x,y,z axis oscillation adjustment",
+#         default=(1.0, 1.0, 1.0), 
+#         min = 0, # float
+#         max  = 10.0,
+#         step= 0.1,
+#         precision= 3,
+#         update = update_bone_animation
+#     )
+
+#motion curve almplitude damping scales 
+#x scale
+bpy.types.PoseBone.damping_x_scale = bpy.props.FloatProperty(
+        name = "X scale",
+        description="motion curve almplitude damping scale x",
+        default=1.0, 
+        min = 0.0, # float
+        max  = 10.0,
+        step= 0.1,
+        precision= 1,
+        update = update_bone_animation
+    )
+#y scale
+bpy.types.PoseBone.damping_y_scale = bpy.props.FloatProperty(
+        name = "Y scale",
+        description="motion curve almplitude damping scale y",
+        default=1.0, 
+        min = 0.0, # float
+        max  = 10.0,
+        step= 0.1,
+        precision= 1,
+        update = update_bone_animation
     )
 
-def damp_bone_animation(self, act: bpy.types.Action, bone_name: str, weights: Vector, tail_crop=0, head_crop=0, crop_start=0) -> None:
-    """Apply damping effect to the motion
-    """
-    global gui_status, gui_err_msg
-
-    armature_action = act
-    #all actions in the blender scene 
-    all_actions = bpy.data.actions
-    #CAfP_org_ is the standard prefix for saving the original action
-    #This is important when we apply the changes to the existing action
-    dummy_name ="CAfP_org_{}".format(armature_action.name)
-    dummy_exist_bool =  [act for act in all_actions if act.name.startswith(dummy_name)]
-
-    if not dummy_exist_bool:
-        print("creating a dummy of the original action...")
-        copy_anim = armature_action.copy()
-        copy_anim.name = dummy_name
-        copy_anim.use_fake_user = True
-
-    #The original animation will be used as the base animation. 
-    #all changes will be added to this 
-    #Otherwise changes accumulate and result distrotered fcurve 
-    original_action = bpy.data.actions[dummy_name]
-
-    #base actions
-    base_curve_w = original_action.fcurves.find('pose.bones["{0}"].rotation_quaternion'.format(bone_name),index =0)  # type: bpy.types.FCurve
-    base_curve_x = original_action.fcurves.find('pose.bones["{0}"].rotation_quaternion'.format(bone_name), index =1)  # type: bpy.types.FCurve
-    base_curve_y = original_action.fcurves.find('pose.bones["{0}"].rotation_quaternion'.format(bone_name),index = 2)  # type: bpy.types.FCurve
-    base_curve_z = original_action.fcurves.find('pose.bones["{0}"].rotation_quaternion'.format(bone_name),index = 3)  # type: bpy.types.FCurve
-    #these are the curves to be changed 
-    curve_w = armature_action.fcurves.find('pose.bones["{0}"].rotation_quaternion'.format(bone_name),index =0)  # type: bpy.types.FCurve
-    curve_x = armature_action.fcurves.find('pose.bones["{0}"].rotation_quaternion'.format(bone_name), index =1)  # type: bpy.types.FCurve
-    curve_y = armature_action.fcurves.find('pose.bones["{0}"].rotation_quaternion'.format(bone_name),index = 2)  # type: bpy.types.FCurve
-    curve_z = armature_action.fcurves.find('pose.bones["{0}"].rotation_quaternion'.format(bone_name),index = 3)  # type: bpy.types.FCurve
-
-    #We don't need to check both sets of curves belwo.  
-    if(curve_w is None and curve_x is None and curve_y is None and curve_z is None and \
-        base_curve_w is None and base_curve_x is None and base_curve_y is None and base_curve_z is None):
-
-        self.report({'ERROR'},"Selected bone has no animation data,pick a bone with animation data")
-        gui_status = 'ERROR_SESSION'
-        gui_err_msg = 'Selected bone has no animation data, pick a bone with animation data'
-        return 
-    else:
-        gui_status = 'ACTIVE_SESSION'
+#Z scale
+bpy.types.PoseBone.damping_z_scale = bpy.props.FloatProperty(
+        name = "Z scale",
+        description="motion curve almplitude damping scale z",
+        default=1.0, 
+        min = 0.0, # float
+        max  = 10.0,
+        step= 0.1,
+        precision= 1,
+        update = update_bone_animation
+    )
 
 
-    # STRONG ASSUMPTION!!!
-    # If there is 1 keyframe for the w curve (0) there will be also for the other curves.
-    base_kf_w = len(curve_w.keyframe_points)
-    base_kf_x = len(curve_x.keyframe_points)
-    base_kf_y = len(curve_y.keyframe_points)
-    base_kf_z = len(curve_z.keyframe_points)
-    #action curves
-    n_keyframes_w = len(curve_w.keyframe_points)
-    n_keyframes_x = len(curve_x.keyframe_points)
-    n_keyframes_y = len(curve_y.keyframe_points)
-    n_keyframes_z = len(curve_z.keyframe_points)
+## offset 
 
-    #assert n_keyframes_w == n_keyframes_x == n_keyframes_y == n_keyframes_z == base_kf_w == base_kf_x == base_kf_y == base_kf_z
-    if not (n_keyframes_w == n_keyframes_x == n_keyframes_y == \
-        n_keyframes_z == base_kf_w == base_kf_x == base_kf_y == base_kf_z):
-        self.report({'ERROR'}, 'All Fcurves for {} must have {} equal number of keyframes'.format(armature_action.name,n_keyframes_w))
-        gui_status = 'ERROR_SESSION'
-        gui_err_msg = 'All Fcurves for {} must have {} equal number of keyframes'.format(armature_action.name,n_keyframes_w)
-        return 
-    else:
-        gui_status = 'ACTIVE_SESSION'
+#x angular offset
+bpy.types.PoseBone.angular_offset_x = bpy.props.IntProperty(
+        name = "X Offset",
+        description="x axis angular offset",
+        default=0, 
+        soft_min = -180, 
+        soft_max  = 180,
+        subtype = 'ANGLE',
+        update = update_bone_animation
+    )
+#y angular offset
+bpy.types.PoseBone.angular_offset_y = bpy.props.IntProperty(
+        name = "Y Offset",
+        description="y axis angular offset",
+        default=0, 
+        soft_min = -180, 
+        soft_max  = 180,
+        subtype = 'ANGLE',
+        update = update_bone_animation
+    )
+#z angular offset
+bpy.types.PoseBone.angular_offset_z = bpy.props.IntProperty(
+        name = "Z Offset",
+        description="z axis angular offset",
+        default=0, 
+        soft_min = -180, 
+        soft_max  = 180,
+        subtype = 'ANGLE',
+        update = update_bone_animation
+    )
 
-
-    #Select the range of the animation
-    if( (crop_start+tail_crop <n_keyframes_w-crop_start) and \
-        (n_keyframes_w-crop_start > head_crop) ):
-        minKeyframe = crop_start+tail_crop
-        maxKeyframe = (n_keyframes_w) - head_crop
-        #self.report({'INFO'}, "Damping effect applies to keyframes from {0} till {1}".format(minKeyframe,maxKeyframe))
-    else:
-        minKeyframe = 0
-        maxKeyframe = n_keyframes_w
-        self.report({'WARNING'}, "Unexpected keyframe crop, applying to all keyframes from {} till {}".format(minKeyframe,maxKeyframe) ) 
-
-
-    for i in range(minKeyframe,maxKeyframe):
-
-        base_kf_w = base_curve_w.keyframe_points[i]  # type: bpy.types.Keyframe
-        base_kf_x = base_curve_x.keyframe_points[i]  # type: bpy.types.Keyframe
-        base_kf_y = base_curve_y.keyframe_points[i]  # type: bpy.types.Keyframe
-        base_kf_z = base_curve_z.keyframe_points[i]  # type: bpy.types.Keyframe
-
-        kf_w = curve_w.keyframe_points[i]  # type: bpy.types.Keyframe
-        kf_x = curve_x.keyframe_points[i]  # type: bpy.types.Keyframe
-        kf_y = curve_y.keyframe_points[i]  # type: bpy.types.Keyframe
-        kf_z = curve_z.keyframe_points[i]  # type: bpy.types.Keyframe
-
-        # All the time stamps should be the same
-        #timestamp = kf_w.co[0]
-        #print("timestamp kf: {}".format(timestamp))
-
-        if not(kf_w.co[0] == kf_x.co[0] == kf_y.co[0] == kf_z.co[0]== base_kf_w.co[0] == \
-            base_kf_x.co[0] == base_kf_y.co[0] == base_kf_z.co[0]):
-            self.report({'ERROR'}, '{} keyframe missing in one of the FCurves'.format(kf_w.co[0]))
-            gui_status = 'ERROR_SESSION'
-            gui_err_msg = '{} keyframe missing in one of the FCurves'.format(kf_w.co[0])
-            return 
-        else:
-            gui_status = 'ACTIVE_SESSION'
-
-
-        # Retrieve the base roation
-        current_q = Quaternion((base_kf_w.co[1], base_kf_x.co[1], base_kf_y.co[1], base_kf_z.co[1]))
-        current_eulr = current_q.to_euler()
-        
-        #Element-wise multiplication with a weight vector
-        new_euler = Euler((x * y for x, y in zip( weights,current_eulr )), 'XYZ')
-        new_q = new_euler.to_quaternion()
-        
-        #update armature action
-        kf_w.co[1], kf_x.co[1], kf_y.co[1], kf_z.co[1] = new_q
-
-    # Force timings and handles update
-    curve_w.update()
-    curve_x.update()
-    curve_y.update()
-    curve_z.update() 
-
-
-
-
-class OffsetAnimation(bpy.types.Operator):
-    """Rotational translate animation curves"""
-    bl_idname = "cafp.offsetanimation"
-    bl_label = "Rotational translate animation curves for the selected bone from the active action"
-    bl_options = {'REGISTER', 'UNDO'}
-
-    @classmethod
-    def poll(cls, context):
-
-        if not (context.mode == 'POSE'):
-            print("Warning(CAfP): go to pose mode")
-            return False
-
-        obj = context.active_object  # type: bpy.types.Object
-        if obj is not None:
-            if obj.type == 'ARMATURE':
-                anim_data = obj.animation_data
-                if anim_data is not None:
-                    act = anim_data.action
-                    if act is not None:
-                        return True
-        print("Warning(CAfP): There are no active animation action")
-        return False
-
-    def execute(self, context):
-        import re
-
-        # Active Armature
-        obj = context.active_object  # type: bpy.types.Object
-        if obj.type != 'ARMATURE':
-            self.report({'ERROR'},"Selected object {} is not ARMATURE type".format(obj))
-            return {'CANCELLED'}
-    
-        #active item 
-        active_bone = bpy.context.active_pose_bone
-        bone_name = active_bone.basename
-
-        #animation
-        #TODO: keep the original animation and alter every changes from the original
-        action = obj.animation_data.action
-
-        if active_bone is not None:
-            
-            weights = active_bone.damping_vector
-            if action is not None:
-                damp_bone_animation(self, action, bone_name, weights)
-
-            else:
-                self.report({'ERROR'},"Armature {0} has no animation data".format(obj))
-                return {'CANCELLED'}
-        else:
-            self.report({'ERROR'},"No active_bone")
-            return {'CANCELLED'}
-
-        return {'FINISHED'}
-        
-    
+initial_check = False
 
 class VIEW3D_PT_cafpmainpanle(bpy.types.Panel):
     bl_label = "CAfP_Panel"
@@ -240,53 +131,96 @@ class VIEW3D_PT_cafpmainpanle(bpy.types.Panel):
     # bl_context = 'objectmode'
     bl_category = "CAfP"
 
+  
+
     def draw(self, context):
         layout = self.layout
-        active_bone = bpy.context.active_pose_bone
-        global gui_err_msg, gui_status
+        active_object = context.active_object
+        global initial_check
 
-        box_info = self.layout.box()
-        box_info.label(text="Animation editor for armature")
-
-
-        if context.mode == 'POSE':
-
-            if gui_status == "ERROR_SESSION":
+        if active_object is not None:
+            if active_object.type == 'ARMATURE':
+                anim_data = active_object.animation_data
+                if anim_data is not None:
+                    act = anim_data.action
+                    if act is not None:
+                        initial_check = True
+                        box_info = self.layout.box()
+                        box_info.label(text='Create Armatures for Personality', icon="OUTLINER_OB_ARMATURE")
+                        
+                    else:
+                        box_err = self.layout.box()
+                        box_err.label(text='Amature has no animation action', icon="ERROR")     
+                else:
+                    box_err = self.layout.box()
+                    box_err.label(text='Amature has no animation', icon="ERROR")      
+            else:
                 box_err = self.layout.box()
-                box_err.label(text=gui_err_msg, icon="INFO")
+                box_err.label(text='Object is not ARMATURE type', icon="ERROR")       
+        else:
+            box_err = self.layout.box()
+            box_err.label(text='No active object', icon="ERROR")
 
-                row = layout.row()
-                box = row.box()
-                box.label(text = "Animation:")
-                box.operator(OffsetAnimation.bl_idname, text="back")
+        
+        #Assume posemode only active for armature types
+        if initial_check:
+            if context.mode == 'POSE':
 
-            if gui_status == "ACTIVE_SESSION":
+                if global_config.gui_status.startswith("ERROR"):
+
+                    if global_config.gui_status == "ERROR_BONE_OPP":
+                        box_err = self.layout.box()
+                        box_err.label(text=global_config.gui_err_msg, icon="ERROR")
+                        row = layout.row()
+                        box = row.box()
+                        box.label(text = "OFFSET TOOL:")
+                        box.operator(BoneAnimatorOffDamp.bl_idname, text="back")
+                    else:
+                        box_err = self.layout.box()
+                        box_err.label(text=global_config.gui_err_msg, icon="ERROR")
 
                 
-                layout.row()
-                row2 = layout.row()
-                box2 = row2.box()
-                box2.label(text = "Damping:")
-                if active_bone is not None: 
-                    box2.prop(active_bone, "damping_vector",toggle=True)
-                else: 
-                    infor_messsage = box2.row()
-                    infor_messsage.label(text= "select a single bone")
+                if global_config.gui_status.startswith("ACTIVE"):
+                    active_bone = bpy.context.active_pose_bone
+                    bone_name = active_bone.basename
+                    layout.row()
+                    layout.row().label(text="Active Bone: {}".format(bone_name), icon= 'BONE_DATA')
+                    #damping
+                    damp_row = layout.row(align=True)
+                    damping_box = damp_row.box()
+                    damping_box.label(text = "Animation Amplitude Modifier:",icon='FORCE_HARMONIC')
+
+                    #offset
+                    offset_row = layout.row()
+                    offset_box = offset_row.box()
+                    offset_box.label(text = "Animation Angular Offset:",icon = 'ORIENTATION_GIMBAL')
+        
+                    if active_bone is not None: 
+                        col = damping_box.column(align=True)
+                        col.prop(active_bone, "damping_x_scale",toggle=True, expand=True)
+                        col.prop(active_bone, "damping_y_scale",toggle=True, expand=True)
+                        col.prop(active_bone, "damping_z_scale",toggle=True, expand=True)
+
+                        col2 = offset_box.column(align=True)
+                        col2.prop(active_bone, "angular_offset_x",toggle=True, expand=True)
+                        col2.prop(active_bone, "angular_offset_y",toggle=True, expand=True)
+                        col2.prop(active_bone, "angular_offset_z",toggle=True, expand=True)
+                    else: 
+                        infor_messsage = layout.row()
+                        infor_messsage.label(text= "select a bone")
+            else: 
+                box_warn = self.layout.box()
+                box_warn.label(text='Select the ARMATURE and go to POSEMODE', icon="OUTLINER_OB_LIGHT")   
 
         else:
-            layout.label(text = 'Please go to the Pose mode',icon="INFO") 
+            box_warn = self.layout.box()
+            box_warn.label(text='Select an ARMATURE with animation', icon="OUTLINER_OB_LIGHT")
+
+ 
             
 
-        
 
-
-        
-
-
-
-
-
-classes = (VIEW3D_PT_cafpmainpanle,OffsetAnimation)
+classes = (VIEW3D_PT_cafpmainpanle,BoneAnimatorOffDamp)
 
 def register():
     for clas in classes:
