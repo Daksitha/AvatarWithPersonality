@@ -29,30 +29,17 @@ from bpy.utils import register_class
 #from . damping_tools import DampAnimation
 #from . offset_tools import AngularOffsetAnimation
 from . bone_motion import BoneAnimatorOffDamp
-
-#all global variables are shared accross using Singletone method 
+from . time_warping import CreateTimeWarpingCurve
+from . time_warping import TimeWarper
+ 
 import CAfP.global_config as global_config
 
-
+################## animation bone properties ###################
 def update_bone_animation(self, context):
     print("bone animator", self)
     bpy.ops.cafp.boneanimator()
     
 
-
-#Define custome property for PoseBone 
-# bpy.types.PoseBone.damping_vector = bpy.props.FloatVectorProperty(
-#         name = "Bone Damping Vector",
-#         description="x,y,z axis oscillation adjustment",
-#         default=(1.0, 1.0, 1.0), 
-#         min = 0, # float
-#         max  = 10.0,
-#         step= 0.1,
-#         precision= 3,
-#         update = update_bone_animation
-#     )
-
-#motion curve almplitude damping scales 
 #x scale
 bpy.types.PoseBone.damping_x_scale = bpy.props.FloatProperty(
         name = "X scale",
@@ -121,7 +108,49 @@ bpy.types.PoseBone.angular_offset_z = bpy.props.IntProperty(
         subtype = 'ANGLE',
         update = update_bone_animation
     )
+#################  NLA Opporation variable ##################
+nla_strip_list = []
+def get_nla_strips_list(scene, context):
+    global nla_strip_list
+    nla_strip_list.clear()
+    obj = context.active_object
+    if obj is not None:
+        nla_strip = obj.animation_data.nla_tracks
+        if len(nla_strip):
+            nla_strip = obj.animation_data.nla_tracks["NlaTrack"].strips
+            for nla in nla_strip:
+                nla_strip_list.append((str(nla.name), str(nla.name), ""))
+        else: 
+            nla_strip_list.append(('NONE', "Select", ""))
+           
+    return nla_strip_list
 
+def update_timewarping(self,context):
+    bpy.ops.cafp.timewarper()
+bpy.types.Scene.nla_strips_active = bpy.props.EnumProperty( 
+        name= "active nla strip",
+        items=get_nla_strips_list
+        )
+
+ 
+bpy.types.Scene.nla_control_x = bpy.props.IntProperty( 
+        name= "timewarp x",
+        description="Strip_time Fcurve end point keyframe location x",
+        default=0, 
+        soft_min = 0, 
+        update = update_timewarping
+        
+        )
+bpy.types.Scene.nla_control_y = bpy.props.IntProperty( 
+         name= "timewarp y",
+        description="Strip_time Fcurve end point keyframe location y",
+        default=0, 
+        soft_min = 0, 
+        update = update_timewarping
+        )
+
+
+##############################   main panel  ###########################################
 initial_check = False
 
 class VIEW3D_PT_cafpmainpanle(bpy.types.Panel):
@@ -137,6 +166,7 @@ class VIEW3D_PT_cafpmainpanle(bpy.types.Panel):
         layout = self.layout
         active_object = context.active_object
         global initial_check
+        scene = context.scene
 
         if active_object is not None:
             if active_object.type == 'ARMATURE':
@@ -150,16 +180,20 @@ class VIEW3D_PT_cafpmainpanle(bpy.types.Panel):
                         
                     else:
                         box_err = self.layout.box()
-                        box_err.label(text='Amature has no animation action', icon="ERROR")     
+                        box_err.label(text='Amature has no animation action', icon="ERROR")
+                        initial_check = False     
                 else:
                     box_err = self.layout.box()
-                    box_err.label(text='Amature has no animation', icon="ERROR")      
+                    box_err.label(text='Amature has no animation', icon="ERROR")
+                    initial_check = False      
             else:
                 box_err = self.layout.box()
-                box_err.label(text='Object is not ARMATURE type', icon="ERROR")       
+                box_err.label(text='Object is not ARMATURE type', icon="ERROR")
+                initial_check = False       
         else:
             box_err = self.layout.box()
             box_err.label(text='No active object', icon="ERROR")
+            initial_check = False
 
         
         #Assume posemode only active for armature types
@@ -182,9 +216,10 @@ class VIEW3D_PT_cafpmainpanle(bpy.types.Panel):
                 
                 if global_config.gui_status.startswith("ACTIVE"):
                     active_bone = bpy.context.active_pose_bone
-                    bone_name = active_bone.basename
+                    #TODO:Active still it has no bone selected
+                    #bone_name = active_bone.basename
                     layout.row()
-                    layout.row().label(text="Active Bone: {}".format(bone_name), icon= 'BONE_DATA')
+                    #layout.row().label(text="Active Bone: {}".format(bone_name), icon= 'BONE_DATA')
                     #damping
                     damp_row = layout.row(align=True)
                     damping_box = damp_row.box()
@@ -206,8 +241,18 @@ class VIEW3D_PT_cafpmainpanle(bpy.types.Panel):
                         col2.prop(active_bone, "angular_offset_y",toggle=True, expand=True)
                         col2.prop(active_bone, "angular_offset_z",toggle=True, expand=True)
                     else: 
-                        infor_messsage = layout.row()
-                        infor_messsage.label(text= "select a bone")
+                        infor_damp = damping_box.row()
+                        info_off = offset_box.row()
+                        info_off.label(text= "select a bone")
+                        infor_damp.label(text= "select a bone")
+
+                    #nla timewarp
+                    tw_row = layout.row(align=True)
+                    tw_box = tw_row.box()
+                    tw_box.label(text = "Finalize the animation for timewarping:",icon='FREEZE')
+                    tw_opo_row = tw_box.row()
+                    tw_opo_row.operator('cafp.timewarpinggraph', text='Finalize')
+
             else: 
                 box_warn = self.layout.box()
                 box_warn.label(text='Select the ARMATURE and go to POSEMODE', icon="OUTLINER_OB_LIGHT")   
@@ -216,11 +261,29 @@ class VIEW3D_PT_cafpmainpanle(bpy.types.Panel):
             box_warn = self.layout.box()
             box_warn.label(text='Select an ARMATURE with animation', icon="OUTLINER_OB_LIGHT")
 
+        #NLA panel
+        tw_row = layout.row()
+        tw_box = tw_row.box()
+        tw_box.label(text = "Timewarpping:",icon = 'SORTTIME')
+
+        tw_col = tw_box.column(align=True)
+        tw_col.prop(scene,'nla_strips_active')
+
+        if scene.nla_strips_active != "NONE":
+            tw_col2= tw_box.column(align=True)
+            tw_col2.prop(scene,'nla_control_x',toggle=True, expand=True)
+            tw_col2.prop(scene,'nla_control_y',toggle=True, expand=True)
+
+
+
+
+
+
  
             
 
 
-classes = (VIEW3D_PT_cafpmainpanle,BoneAnimatorOffDamp)
+classes = (VIEW3D_PT_cafpmainpanle,BoneAnimatorOffDamp,CreateTimeWarpingCurve,TimeWarper)
 
 def register():
     for clas in classes:
