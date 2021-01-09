@@ -115,18 +115,29 @@ def get_nla_strips_list(scene, context):
     nla_strip_list.clear()
     obj = context.active_object
     if obj is not None:
-        nla_strip = obj.animation_data.nla_tracks
-        if len(nla_strip):
-            nla_strip = obj.animation_data.nla_tracks["NlaTrack"].strips
-            for nla in nla_strip:
-                nla_strip_list.append((str(nla.name), str(nla.name), ""))
-        else: 
-            nla_strip_list.append(('NONE', "Select", ""))
-           
+        if obj.animation_data is not None:
+            nla_strip = obj.animation_data.nla_tracks
+            if len(nla_strip):
+                nla_strip = obj.animation_data.nla_tracks["NlaTrack"].strips
+                for nla in nla_strip:
+                    nla_strip_list.append((str(nla.name), str(nla.name), ""))
+            else: 
+                nla_strip_list.append(('NONE', "Select", ""))
     return nla_strip_list
+
+# def getAnimationMax(scene,context):
+#     obj = context.active_object
+#     if obj is not None:
+#         if obj.animation_data is not None:
+#             nla_strip = obj.animation_data.nla_tracks
+#             if len(nla_strip):
+
+    
 
 def update_timewarping(self,context):
     bpy.ops.cafp.timewarper()
+
+ #properties   
 bpy.types.Scene.nla_strips_active = bpy.props.EnumProperty( 
         name= "active nla strip",
         items=get_nla_strips_list
@@ -136,22 +147,31 @@ bpy.types.Scene.nla_strips_active = bpy.props.EnumProperty(
 bpy.types.Scene.nla_control_x = bpy.props.IntProperty( 
         name= "timewarp x",
         description="Strip_time Fcurve end point keyframe location x",
-        default=0, 
-        soft_min = 0, 
+        default=0,
+        min = 1,  
         update = update_timewarping
         
         )
 bpy.types.Scene.nla_control_y = bpy.props.IntProperty( 
-         name= "timewarp y",
+        name= "timewarp y",
         description="Strip_time Fcurve end point keyframe location y",
-        default=0, 
-        soft_min = 0, 
+        default=0,
+        min=1,
         update = update_timewarping
         )
-
+#sting property 
+bpy.types.Scene.nla_initial_y = bpy.props.StringProperty( 
+        name= "initial y",
+        description="Initial location of timewarping control curve",
+        )
+bpy.types.Scene.nla_initial_x = bpy.props.StringProperty( 
+        name= "initial x",
+        description="initial location of timewarping control curve",
+        )
 
 ##############################   main panel  ###########################################
-initial_check = False
+isArmWithAnim = False
+isArmWithNLA = False
 
 class VIEW3D_PT_cafpmainpanle(bpy.types.Panel):
     bl_label = "CAfP_Panel"
@@ -165,53 +185,63 @@ class VIEW3D_PT_cafpmainpanle(bpy.types.Panel):
     def draw(self, context):
         layout = self.layout
         active_object = context.active_object
-        global initial_check
+        global isArmWithAnim
+        global isArmWithNLA
         scene = context.scene
+
+        box_info = self.layout.box()
 
         if active_object is not None:
             if active_object.type == 'ARMATURE':
                 anim_data = active_object.animation_data
                 if anim_data is not None:
                     act = anim_data.action
+                    nla_strip = anim_data.nla_tracks
                     if act is not None:
-                        initial_check = True
-                        box_info = self.layout.box()
+                        #only place where Animation editor GUI set true
+                        isArmWithAnim = True
+                        isArmWithNLA = False
                         box_info.label(text='Create Armatures for Personality', icon="OUTLINER_OB_ARMATURE")
-                        
+                    elif nla_strip is not None:
+                        if len(nla_strip):
+                            isArmWithAnim = False
+                            #only place where NLA GUI set true
+                            isArmWithNLA = True
                     else:
-                        box_err = self.layout.box()
-                        box_err.label(text='Amature has no animation action', icon="ERROR")
-                        initial_check = False     
+                        box_info.label(text='Active Amature has no action nor NLA', icon="ERROR")
+                        isArmWithAnim = False
+                        isArmWithNLA =False     
                 else:
-                    box_err = self.layout.box()
-                    box_err.label(text='Amature has no animation', icon="ERROR")
-                    initial_check = False      
+                    box_info.label(text='Active Amature has no animation', icon="ERROR")
+                    isArmWithAnim = False
+                    isArmWithNLA = False      
             else:
-                box_err = self.layout.box()
-                box_err.label(text='Object is not ARMATURE type', icon="ERROR")
-                initial_check = False       
+                box_info.label(text='Active object is not ARMATURE type', icon="ERROR")
+                isArmWithAnim = False
+                isArmWithNLA=False       
         else:
-            box_err = self.layout.box()
-            box_err.label(text='No active object', icon="ERROR")
-            initial_check = False
+            box_info.label(text='No active object', icon="ERROR")
+            isArmWithAnim = False
+            isArmWithNLA = False
 
         
         #Assume posemode only active for armature types
-        if initial_check:
+        if isArmWithAnim:
             if context.mode == 'POSE':
 
                 if global_config.gui_status.startswith("ERROR"):
+                    box_err = self.layout.box()
 
                     if global_config.gui_status == "ERROR_BONE_OPP":
-                        box_err = self.layout.box()
                         box_err.label(text=global_config.gui_err_msg, icon="ERROR")
-                        row = layout.row()
-                        box = row.box()
-                        box.label(text = "OFFSET TOOL:")
-                        box.operator(BoneAnimatorOffDamp.bl_idname, text="back")
+                        err_locat= box_err.row()
+                        err_locat.label(text="Error occured in bone operation")
+                        bck_button= box_err.row()                        
+                        bck_button.operator(BoneAnimatorOffDamp.bl_idname, text="back")
                     else:
-                        box_err = self.layout.box()
                         box_err.label(text=global_config.gui_err_msg, icon="ERROR")
+                        err_locat= box_err.row()
+                        err_locat.label(text="Uncknown error: contact CAfP support")
 
                 
                 if global_config.gui_status.startswith("ACTIVE"):
@@ -256,23 +286,35 @@ class VIEW3D_PT_cafpmainpanle(bpy.types.Panel):
             else: 
                 box_warn = self.layout.box()
                 box_warn.label(text='Select the ARMATURE and go to POSEMODE', icon="OUTLINER_OB_LIGHT")   
+        
+        #TODO: implement a funtion to delete NLA strip and get back to the animation
+        if isArmWithNLA:
+             #NLA panel
+            tw_row = layout.row()
+            tw_box = tw_row.box()
+            tw_box.label(text = "Timewarpping:",icon = 'SORTTIME')
 
-        else:
+            tw_col = tw_box.column(align=True)
+            tw_col.prop(scene,'nla_strips_active')
+
+            if scene.nla_strips_active != "NONE":
+                tw_info = tw_col.column(align=True)
+                tw_info.label(text="Initial x and y")
+                tw_info.label(text=scene.nla_initial_x)
+                tw_info.label(text=scene.nla_initial_y)
+
+                tw_col2= tw_box.column(align=True)
+                #tw_col2.prop(scene,'nla_initial_x',toggle=True, expand=True)
+                #tw_col2.prop(scene,'nla_initial_y',toggle=True, expand=True)
+
+                tw_col2.prop(scene,'nla_control_x',toggle=True, expand=True)
+                tw_col2.prop(scene,'nla_control_y',toggle=True, expand=True)
+        
+        if not isArmWithNLA and not isArmWithAnim:
             box_warn = self.layout.box()
-            box_warn.label(text='Select an ARMATURE with animation', icon="OUTLINER_OB_LIGHT")
+            box_warn.label(text='Select an ARMATURE with animation_data (action or NLA)', icon="OUTLINER_OB_LIGHT")
 
-        #NLA panel
-        tw_row = layout.row()
-        tw_box = tw_row.box()
-        tw_box.label(text = "Timewarpping:",icon = 'SORTTIME')
-
-        tw_col = tw_box.column(align=True)
-        tw_col.prop(scene,'nla_strips_active')
-
-        if scene.nla_strips_active != "NONE":
-            tw_col2= tw_box.column(align=True)
-            tw_col2.prop(scene,'nla_control_x',toggle=True, expand=True)
-            tw_col2.prop(scene,'nla_control_y',toggle=True, expand=True)
+       
 
 
 

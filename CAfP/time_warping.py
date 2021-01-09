@@ -25,6 +25,7 @@ class CreateTimeWarpingCurve(bpy.types.Operator):
         return False
 
     def execute(self,context):
+        scene = context.scene
         obj = context.active_object
         #print("active object: {}".format(obj))
         armature_action = obj.animation_data.action
@@ -58,6 +59,14 @@ class CreateTimeWarpingCurve(bpy.types.Operator):
         nla_strip.use_animated_time = True 
         start_time = nla_strip.action.frame_range[0]
         end_time = nla_strip.action.frame_range[1]
+
+        #set the scene property 
+        scene.nla_control_x = end_time
+        scene.nla_control_y = end_time
+        scene.nla_initial_y = str(end_time)
+        scene.nla_initial_x = str(end_time)
+        self.report({'INFO'}, "scene property x {}".format(scene.nla_control_x))
+        self.report({'INFO'}, "scene property y {}".format(scene.nla_control_y))
 
         #create keyframes
         nla_strip.strip_time = start_time
@@ -96,9 +105,9 @@ class TimeWarper(bpy.types.Operator):
 
              #fcurve
             fc = nla_strip.fcurves.find(data_path="strip_time", index=0)
-            if fc is not None:
+            if len(fc.keyframe_points):
                 n_keyframes = len(fc.keyframe_points)
-                self.report({'INFO'}, "Length nla_strip control curve {}".format(n_keyframes))
+                #self.report({'INFO'}, "Length nla_strip control curve {}".format(n_keyframes))
 
                 last_kf = fc.keyframe_points[n_keyframes-1]
                 last_kf.co[0] = scene.nla_control_x
