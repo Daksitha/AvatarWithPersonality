@@ -82,13 +82,17 @@ def bone_animator(self, act: bpy.types.Action, bone_name: str, damp_weights: Vec
     else:
         global_config.gui_status = 'ACTIVE_SESSION'
 
+    #keyframe range 
+    from_kf = crop_start+head_crop
+    till_kf = n_keyframes_w-tail_crop
+    kf_range = till_kf - from_kf
 
+    
     #Select the range of the animation
-    if( (crop_start+tail_crop <n_keyframes_w-crop_start) and \
-        (n_keyframes_w-crop_start > head_crop) ):
-        minKeyframe = crop_start+tail_crop
-        maxKeyframe = (n_keyframes_w) - head_crop
-        #self.report({'INFO'}, "Damping effect applies to keyframes from {0} till {1}".format(minKeyframe,maxKeyframe))
+    if(kf_range>0):
+        minKeyframe = crop_start+head_crop
+        maxKeyframe = n_keyframes_w - tail_crop
+        self.report({'INFO'}, "Damping effect applies to keyframes from {0} till {1}".format(minKeyframe,maxKeyframe))
     else:
         self.report({'WARNING'}, "Unexpected keyframe crop. n_keyframes {0}, crop (start_kf:{1},head_crop_kf:{2},tail_crop_kf:{3} "\
             .format(n_keyframes_w,crop_start,head_crop,tail_crop))
@@ -203,8 +207,13 @@ class BoneAnimatorOffDamp(bpy.types.Operator):
             z_an = active_bone.angular_offset_z
             angular_offset = Vector((x_an,y_an,z_an))
 
+            s_crop = active_bone.anim_crop_start
+            head_crop = active_bone.anim_head_crop
+            tail_crop = active_bone.anim_tail_crop
+
             if action is not None:
-                bone_animator(self, act=action,bone_name= bone_name,damp_weights= damping_weights,angular_offset= angular_offset)
+                bone_animator(self, act=action,bone_name= bone_name,damp_weights= damping_weights,\
+                    angular_offset= angular_offset,tail_crop=tail_crop, head_crop=head_crop, crop_start=s_crop)
 
             else:
                 self.report({'ERROR'},"Armature {0} has no animation data".format(obj))

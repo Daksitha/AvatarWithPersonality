@@ -34,9 +34,9 @@ from . time_warping import TimeWarper
  
 import CAfP.global_config as global_config
 
-################## animation bone properties ###################
+################## bone properties ###################
 def update_bone_animation(self, context):
-    print("bone animator", self)
+    #print("bone animator", self)
     bpy.ops.cafp.boneanimator()
     
 
@@ -108,6 +108,32 @@ bpy.types.PoseBone.angular_offset_z = bpy.props.IntProperty(
         subtype = 'ANGLE',
         update = update_bone_animation
     )
+
+## animation range 
+#start
+bpy.types.PoseBone.anim_crop_start = bpy.props.IntProperty(
+        name = "Anim_start_kf",
+        description="Starting keyframe from where the animation changes will affect",
+        default=0, 
+        update = update_bone_animation
+    )
+
+#how many kf to ignore from the start
+bpy.types.PoseBone.anim_head_crop = bpy.props.IntProperty(
+        name = "Ignore_from_start(kf)",
+        description="How many kf to ignore from the start",
+        default=0, 
+        update = update_bone_animation
+    )
+
+#how many kf to ignore from the end
+bpy.types.PoseBone.anim_tail_crop = bpy.props.IntProperty(
+        name = "Ignore_from_end(kf)",
+        description="How many kf to ignore from the end",
+        default=0, 
+        update = update_bone_animation
+    )
+
 #################  NLA Opporation variable ##################
 nla_strip_list = []
 def get_nla_strips_list(scene, context):
@@ -250,6 +276,11 @@ class VIEW3D_PT_cafpmainpanle(bpy.types.Panel):
                     #bone_name = active_bone.basename
                     layout.row()
                     #layout.row().label(text="Active Bone: {}".format(bone_name), icon= 'BONE_DATA')
+
+                    #Range 
+                    settings_row = layout.row(align=True)
+                    settings_box = settings_row.box()
+                    settings_box.label(text="Keyframe Range to Change", icon='SETTINGS')
                     #damping
                     damp_row = layout.row(align=True)
                     damping_box = damp_row.box()
@@ -261,6 +292,12 @@ class VIEW3D_PT_cafpmainpanle(bpy.types.Panel):
                     offset_box.label(text = "Animation Angular Offset:",icon = 'ORIENTATION_GIMBAL')
         
                     if active_bone is not None: 
+
+                        set_col = settings_box.column(align=True)
+                        set_col.prop(active_bone, "anim_crop_start", expand=True)
+                        set_col.prop(active_bone, "anim_head_crop", expand=True)
+                        set_col.prop(active_bone, "anim_tail_crop", expand=True)
+
                         col = damping_box.column(align=True)
                         col.prop(active_bone, "damping_x_scale",toggle=True, expand=True)
                         col.prop(active_bone, "damping_y_scale",toggle=True, expand=True)
