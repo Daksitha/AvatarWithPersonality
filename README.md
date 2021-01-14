@@ -1,5 +1,6 @@
 # AvataWithPersonality
-This is a project we completed as part of the seminar "How To Build a Social Computer" at Saarland University, Germany.
+This is a plugin to edit aniation in Blender. Adjust animation angular offset or amplitude of the curves is possible. 
+All animations were tested from Mixamo therefore only Quaternion angles support using this 
 
 ## Angular offset *of a joint's position*: 
 Walking introvert keep their arms closer to the body where as extrovert tend to move their arms slightly away from the body. 
@@ -13,4 +14,4 @@ This is to make the existing motion slower. Introvert move and act slower than a
 
 
 [@Copyright] 
-[Fabrizio Nunnari, Daksitha Withanage, Fatima Aly, Chandrika]
+[Fabrizio Nunnari, Daksitha Withanage]
