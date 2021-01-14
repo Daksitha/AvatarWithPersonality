@@ -31,6 +31,8 @@ from bpy.utils import register_class
 from . bone_motion import BoneAnimatorOffDamp
 from . time_warping import CreateTimeWarpingCurve
 from . time_warping import TimeWarper
+
+from . file_op import ExportPoseBone
  
 import CAfP.global_config as global_config
 
@@ -313,6 +315,13 @@ class VIEW3D_PT_cafpmainpanle(bpy.types.Panel):
                         info_off.label(text= "select a bone")
                         infor_damp.label(text= "select a bone")
 
+                    #expoert and import 
+                    exp_rw = layout.row(align=True)
+                    exp_box = exp_rw.box()
+                    exp_box.label(text="Export PoseBone changes", icon='EXPORT')
+                    export_butt_rw = exp_box.row()
+                    export_butt_rw.operator('cafp.export_posebone_data',text='Export')
+                    
                     #nla timewarp
                     tw_row = layout.row(align=True)
                     tw_box = tw_row.box()
@@ -362,7 +371,7 @@ class VIEW3D_PT_cafpmainpanle(bpy.types.Panel):
             
 
 
-classes = (VIEW3D_PT_cafpmainpanle,BoneAnimatorOffDamp,CreateTimeWarpingCurve,TimeWarper)
+classes = (VIEW3D_PT_cafpmainpanle,BoneAnimatorOffDamp,CreateTimeWarpingCurve,TimeWarper,ExportPoseBone)
 
 def register():
     for clas in classes:

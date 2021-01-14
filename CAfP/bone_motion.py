@@ -92,7 +92,7 @@ def bone_animator(self, act: bpy.types.Action, bone_name: str, damp_weights: Vec
     if(kf_range>0):
         minKeyframe = crop_start+head_crop
         maxKeyframe = n_keyframes_w - tail_crop
-        self.report({'INFO'}, "Damping effect applies to keyframes from {0} till {1}".format(minKeyframe,maxKeyframe))
+        #self.report({'INFO'}, "Damping effect applies to keyframes from {0} till {1}".format(minKeyframe,maxKeyframe))
     else:
         self.report({'WARNING'}, "Unexpected keyframe crop. n_keyframes {0}, crop (start_kf:{1},head_crop_kf:{2},tail_crop_kf:{3} "\
             .format(n_keyframes_w,crop_start,head_crop,tail_crop))
@@ -139,11 +139,11 @@ def bone_animator(self, act: bpy.types.Action, bone_name: str, damp_weights: Vec
         #Offset 
 
         quat_x = Quaternion((1.0, 0.0, 0.0), math.radians(angular_offset[0]))
-        quat_z = Quaternion((0.0, 1.0, 0.0), math.radians(angular_offset[1]))
+        quat_y = Quaternion((0.0, 1.0, 0.0), math.radians(angular_offset[1]))
         quat_z = Quaternion((0.0, 0.0, 1.0), math.radians(angular_offset[2]))
-        quat_ofset = quat_x @ quat_z @ quat_z
+        quat_ofset = quat_x @ quat_y @ quat_z
 
-        #TODO: does the order matter? Offset and Damp
+        #TODO: does the order matter? 
         new_qat = quat_ofset @ damped_quat
         new_qat.normalize()
         
