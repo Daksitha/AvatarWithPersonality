@@ -114,27 +114,27 @@ bpy.types.PoseBone.angular_offset_z = bpy.props.IntProperty(
 
 ## animation range 
 #start
-bpy.types.PoseBone.anim_crop_start = bpy.props.IntProperty(
+bpy.types.PoseBone.anim_start = bpy.props.IntProperty(
         name = "Anim_start_kf",
         description="Starting keyframe from where the animation changes will affect",
         default=0, 
-        update = update_bone_animation
+    
     )
 
 #how many kf to ignore from the start
-bpy.types.PoseBone.anim_head_crop = bpy.props.IntProperty(
+bpy.types.PoseBone.anim_ignore_from_start = bpy.props.IntProperty(
         name = "Ignore_from_start(kf)",
         description="How many kf to ignore from the start",
         default=0, 
-        update = update_bone_animation
+      
     )
 
 #how many kf to ignore from the end
-bpy.types.PoseBone.anim_tail_crop = bpy.props.IntProperty(
+bpy.types.PoseBone.anim_ignore_from_end = bpy.props.IntProperty(
         name = "Ignore_from_end(kf)",
         description="How many kf to ignore from the end",
         default=0, 
-        update = update_bone_animation
+        
     )
 
 #################  NLA Opporation variable ##################
@@ -297,9 +297,9 @@ class VIEW3D_PT_cafpmainpanle(bpy.types.Panel):
                     if active_bone is not None: 
 
                         set_col = settings_box.column(align=True)
-                        set_col.prop(active_bone, "anim_crop_start", expand=True)
-                        set_col.prop(active_bone, "anim_head_crop", expand=True)
-                        set_col.prop(active_bone, "anim_tail_crop", expand=True)
+                        set_col.prop(active_bone, "anim_start", expand=True)
+                        set_col.prop(active_bone, "anim_ignore_from_start", expand=True)
+                        set_col.prop(active_bone, "anim_ignore_from_end", expand=True)
 
                         col = damping_box.column(align=True)
                         col.prop(active_bone, "damping_x_scale",toggle=True, expand=True)

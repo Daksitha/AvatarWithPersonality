@@ -156,6 +156,24 @@ def bone_animator(self, act: bpy.types.Action, bone_name: str, damp_weights: Vec
     curve_y.update()
     curve_z.update() 
 
+def get_bone_properties(bone):
+        active_bone=bone
+
+        x_dp = active_bone.damping_x_scale
+        y_dp = active_bone.damping_y_scale
+        z_dp = active_bone.damping_z_scale
+        damping_weights = Vector((x_dp,y_dp,z_dp))
+
+        x_an = active_bone.angular_offset_x
+        y_an = active_bone.angular_offset_y
+        z_an = active_bone.angular_offset_z
+        angular_offset = Vector((x_an,y_an,z_an))
+
+        s_crop = active_bone.anim_start
+        head_crop = active_bone.anim_ignore_from_start
+        tail_crop = active_bone.anim_ignore_from_end
+        edit_range = [s_crop,head_crop,tail_crop]
+        return damping_weights,angular_offset,edit_range
 
 class BoneAnimatorOffDamp(bpy.types.Operator):
     """Rotational translate animation curves"""
@@ -180,6 +198,7 @@ class BoneAnimatorOffDamp(bpy.types.Operator):
         return False
 
     def execute(self, context):
+
         
 
         # Active Armature
@@ -190,37 +209,37 @@ class BoneAnimatorOffDamp(bpy.types.Operator):
     
         #active item 
         active_bone = bpy.context.active_pose_bone
-        bone_name = active_bone.basename
+        #importing data to all bones selecte
+        #load_data_bones= bpy.context.selected_pose_bones_from_active_object
+        load_data_bones= bpy.context.visible_pose_bones
+        
 
         #animation
         action = obj.animation_data.action
 
-        if active_bone is not None:
+        if active_bone is not None and not global_config.IMPORT_DATA:
+            bone_name = active_bone.basename
 
-            x_dp = active_bone.damping_x_scale
-            y_dp = active_bone.damping_y_scale
-            z_dp = active_bone.damping_z_scale
-            damping_weights = Vector((x_dp,y_dp,z_dp))
-
-            x_an = active_bone.angular_offset_x
-            y_an = active_bone.angular_offset_y
-            z_an = active_bone.angular_offset_z
-            angular_offset = Vector((x_an,y_an,z_an))
-
-            s_crop = active_bone.anim_crop_start
-            head_crop = active_bone.anim_head_crop
-            tail_crop = active_bone.anim_tail_crop
-
+            damping_weights,angular_offset,edit_range = get_bone_properties(active_bone)
             if action is not None:
                 bone_animator(self, act=action,bone_name= bone_name,damp_weights= damping_weights,\
-                    angular_offset= angular_offset,tail_crop=tail_crop, head_crop=head_crop, crop_start=s_crop)
+                    angular_offset= angular_offset,tail_crop=edit_range[2], head_crop=edit_range[1], crop_start=edit_range[0])
 
             else:
                 self.report({'ERROR'},"Armature {0} has no animation data".format(obj))
                 return {'CANCELLED'}
+        elif global_config.IMPORT_DATA:
+            for bone_ in load_data_bones:
+                bone_name = bone_.basename
+                damping_weights,angular_offset,edit_range = get_bone_properties(bone_)
+                bone_animator(self, act=action,bone_name= bone_name,damp_weights= damping_weights,\
+                    angular_offset= angular_offset,tail_crop=edit_range[2], head_crop=edit_range[1], crop_start=edit_range[0])
+
         else:
             self.report({'ERROR'},"No active_bone")
             return {'CANCELLED'}
 
         return {'FINISHED'}
+    
+    
    
