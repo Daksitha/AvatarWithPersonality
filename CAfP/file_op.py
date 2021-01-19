@@ -25,7 +25,7 @@ class LoadPoseBone(bpy.types.Operator, ImportHelper):
     bl_label = 'Import for current model'
     bl_idname = 'cafp.import_posebone_data'
     filename_ext = ".json"
-    filter_glob = bpy.props.StringProperty(default="*.json", options={'HIDDEN'},)
+    #filter_glob = bpy.props.StringProperty(default="*.json", options={'HIDDEN'},)
     bl_description = 'Load a transformation file for the current model.'
     bl_context = 'posemode'
     bl_options = {'REGISTER', 'INTERNAL'}
@@ -49,18 +49,39 @@ class LoadPoseBone(bpy.types.Operator, ImportHelper):
         #--------------------
         scene_poseB = context.visible_pose_bones
         im_poseBones = self.load_json_data(self.filepath)
+        #Setting the IMPORT_DATA flag 
+        #global_config.IMPORT_DATA = True
 
         if im_poseBones is not None:
             for im_name, im_val_json in im_poseBones.items():
                 #print("key {0} value{1}".format(im_name,im_val_json))
                 for curr_bone in scene_poseB:
-                    if curr_bone.basename == im_name:
+                    curr_bn = curr_bone.basename
+                    im_bn = im_name
+
+                   
+                    #BUG: mixamorig start with a different character
+                    if im_bn.startswith('mixamorig'):
+                        split_im = im_bn.split(":",1)
+                        if len(split_im)==2:
+                            im_bn = split_im[1]
+                            #im_rg_name = split_im[0]
+                    if curr_bn.startswith('mixamorig'):
+                        split_curr = curr_bn.split(":",1)
+                        if len(split_curr) ==2:
+                            curr_bn = split_curr[1]
+                            #curr_rg_name = split_curr[0]
+
+
+                    if curr_bn == im_bn:
                         for im_props, prp_value in im_val_json[0].items():
                             setattr(curr_bone,im_props,prp_value)
-                            #print("Setting {0}'s property {1} as {2}".\
-                                #format(curr_bone.basename,im_props,prp_value))
+
+                            #print("Set {0}: {1} = {2}".format(curr_bone.basename,im_props,prp_value))
         #run the oporator to update the changes
-        bpy.ops.cafp.boneanimator()         
+        #bpy.ops.cafp.boneanimator()
+        #global_config.IMPORT_DATA=False 
+
         return {'FINISHED'}
     
     def ShowMessageBox(self, message = "", title = "Error !", icon = 'ERROR'):
@@ -115,13 +136,21 @@ class ExportPoseBone(bpy.types.Operator):
 
      
 
-        #obj = context.active_object 
+        obj = context.active_object 
         poseBones = context.selected_pose_bones_from_active_object
 
         out_data = {}
 
+        #metadeta
+        out_data['rig_name'] =obj.name
+
         for bone in poseBones:  # type: bpy.types.PoseBone
             param_json = {}
+            #range 
+            
+            param_json['anim_start'] = bone.anim_start
+            param_json['anim_ignore_from_start'] = bone.anim_ignore_from_start
+            param_json['anim_ignore_from_end'] = bone.anim_ignore_from_end
 
             x_scale = round(bone.damping_x_scale,3)
             y_scale = round(bone.damping_y_scale,3)
