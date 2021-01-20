@@ -199,8 +199,6 @@ class BoneAnimatorOffDamp(bpy.types.Operator):
 
     def execute(self, context):
 
-        
-
         # Active Armature
         obj = context.active_object  # type: bpy.types.Object
         if obj.type != 'ARMATURE':

@@ -25,6 +25,7 @@ bl_info = {
 import bpy 
 from bpy.utils import unregister_class
 from bpy.utils import register_class
+import os
 
 #from . damping_tools import DampAnimation
 #from . offset_tools import AngularOffsetAnimation
@@ -32,9 +33,9 @@ from . bone_motion import BoneAnimatorOffDamp
 from . time_warping import CreateTimeWarpingCurve
 from . time_warping import TimeWarper
 
-from . file_op import LoadPoseBone
 from . file_op import ExportPoseBone
- 
+from . file_op import LoadPoseBone
+
 import CAfP.global_config as global_config
 
 ################## bone properties ###################
@@ -137,6 +138,15 @@ bpy.types.PoseBone.anim_ignore_from_end = bpy.props.IntProperty(
         
     )
 
+#range selected flag 
+bpy.types.PoseBone.is_range_selected = bpy.props.BoolProperty(
+        name = "isRangeSelected",
+        description="check whethere the range to be edited is selected",
+        default=False, 
+        
+    )
+
+
 #################  NLA Opporation variable ##################
 nla_strip_list = []
 def get_nla_strips_list(scene, context):
@@ -160,7 +170,6 @@ def get_nla_strips_list(scene, context):
 #         if obj.animation_data is not None:
 #             nla_strip = obj.animation_data.nla_tracks
 #             if len(nla_strip):
-
     
 
 def update_timewarping(self,context):
@@ -197,6 +206,185 @@ bpy.types.Scene.nla_initial_x = bpy.props.StringProperty(
         name= "initial x",
         description="initial location of timewarping control curve",
         )
+
+def export_bone_parameters_toJson(param_json, bone):
+     
+    #param_json['anim_start'] = bone.anim_start
+    param_json['anim_ignore_from_start'] = bone.anim_ignore_from_start
+    param_json['anim_ignore_from_end'] = bone.anim_ignore_from_end
+
+    x_scale = round(bone.damping_x_scale,3)
+    y_scale = round(bone.damping_y_scale,3)
+    z_scale = round(bone.damping_z_scale,3)
+    
+    param_json['damping_x_scale'] = x_scale
+    param_json['damping_y_scale'] = y_scale
+    param_json['damping_z_scale'] = z_scale
+    
+
+    x_offset = round(bone.angular_offset_x,3)
+    y_offset =round( bone.angular_offset_y,3)
+    z_offset = round(bone.angular_offset_z,3)
+
+
+    param_json['angular_offset_x'] = x_offset
+    param_json['angular_offset_y'] = y_offset
+    param_json['angular_offset_z'] = z_offset
+
+    return param_json
+
+
+def isInCurrDirectory(file_name):
+    filepath = bpy.data.filepath
+    directory = os.path.dirname(filepath)
+    _, _, filenames = next(os.walk(directory))
+    for files_ in filenames:
+        if files_ == file_name:
+            print('file {} already in the direcotry'.format(files_))
+            return True 
+    return False
+
+     
+class SELECTRange(bpy.types.Operator):
+    """
+        Select the keyframe range to edit in the current animation.
+    """
+    bl_label = 'Select the keyframe range to edit'
+    bl_idname = 'cafp.select_posebone_range'
+
+
+    @classmethod
+    def poll(cls, context):
+
+        if not (context.mode == 'POSE'):
+            return False
+
+        obj = context.active_object  # type: bpy.types.Object
+        active_bone = bpy.context.active_pose_bone # type: bpy.types.PoseBone
+        if obj is not None:
+            if obj.type == 'ARMATURE':
+                anim_data = obj.animation_data
+                if anim_data is not None:
+                    act = anim_data.action
+                    if act is not None:
+                        if active_bone is not None:
+                            return True
+        
+        return False
+    
+    def execute(self,context):
+        import json 
+        obj = bpy.context.active_object
+        active_bone = bpy.context.active_pose_bone # type: bpy.types.PoseBone
+        try:
+            #save a file in the current directory
+            path =bpy.path.abspath("//CAfP_Temp_BProperties.json")
+            #print(path)
+            out_data = {}
+            out_data['armature_name'] = '{}'.format(obj.name)
+            if not isInCurrDirectory('CAfP_Temp_BProperties.json'):
+                with open(path, 'w') as out_file:
+                    json.dump(obj=out_data, fp=out_file, indent=2)
+                    self.report({'INFO'}, 'Create a CAfP temp_bone.json at {}'.format(path))
+
+            active_bone.is_range_selected = True
+        except OSError as err:
+            self.report('WARNING','Error {} while creating CAfP_temp_bone.json. Please save the blend file'.format(err))
+            active_bone.is_range_selected =  False
+        except IOError as err:
+            active_bone.is_range_selected = False
+            if path != "":
+                self.report({'WARNING'},"{},while creating {}. Please save the blend file".format(err,bpy.path.basename(path)))
+        except json.JSONDecodeError:
+            active_bone.is_range_selected = False
+            self.report({'WARNING'},"Errors in json file: {}".format(bpy.path.basename(path)))
+        
+        
+        return {'FINISHED'}
+
+class GoBackToRangeSelector(bpy.types.Operator):
+    """
+        Save the current changes for this range and go back to range panel.
+    """
+    bl_label = 'Go back to range selector panel'
+    bl_idname = 'cafp.back_to_range_selection'
+
+    @classmethod
+    def poll(cls, context):
+
+        if not (context.mode == 'POSE'):
+            return False
+
+        obj = context.active_object  # type: bpy.types.Object
+        active_bone = bpy.context.active_pose_bone # type: bpy.types.PoseBone
+        if obj is not None:
+            if obj.type == 'ARMATURE':
+                anim_data = obj.animation_data
+                if anim_data is not None:
+                    act = anim_data.action
+                    if act is not None:
+                        if active_bone is not None:
+                            return True
+
+    def execute(self,context):
+        import json
+        import time
+
+        
+        obj = bpy.context.active_object
+        #save a file in the current directory
+        
+        active_bone = bpy.context.active_pose_bone
+
+        try:
+
+            time1 = time.time()
+            path =bpy.path.abspath("//CAfP_Temp_BProperties.json")
+            out_data = {}
+            with open(path, 'r') as j_file:
+                
+                j_database = json.loads(j_file.read())
+                print(' j_database: {}'.format(j_database))
+                
+                if 'name' in j_database:
+                    if j_database['name'] == obj.name:
+                        self.report({'WARNING'},"Json database and Armature names are not matching")
+                
+                param_json= {}
+                param_json = export_bone_parameters_toJson(param_json, active_bone)
+                if active_bone.name in j_database:
+                    j_database['{}'.format(active_bone.name)].append(param_json)
+                else:
+                    j_database['{}'.format(active_bone.name)] =[]
+                    j_database['{}'.format(active_bone.name)].append(param_json)
+        
+                out_data = j_database
+
+            with open(path, 'w') as output:
+                json.dump(obj=out_data, fp=output, indent=2)
+
+                #set the flag to change the ui
+            
+            active_bone.is_range_selected = False
+
+            self.report({'INFO'},"CAfP_Temp_BProperties {} added in {} secs".format\
+                                (active_bone.name, time.time()-time1))
+        except OSError as err:
+            self.report('WARNING','Error {} while creating CAfP_temp_bone.json. Please save the blend file'.format(err))
+        except IOError as err:
+            if path != "":
+                self.report({'WARNING'},"{},while creating {}. Please save the blend file".format(err,bpy.path.basename(path)))
+        except json.JSONDecodeError as err:
+            self.report({'WARNING'},"Errors {}in json file: {}".format(err, bpy.path.basename(path)))
+
+
+        return {'FINISHED'}
+
+        
+
+
+
+
 
 ##############################   main panel  ###########################################
 isArmWithAnim = False
@@ -254,7 +442,8 @@ class VIEW3D_PT_cafpmainpanle(bpy.types.Panel):
             isArmWithNLA = False
 
         
-        #Assume posemode only active for armature types
+    
+
         if isArmWithAnim:
             if context.mode == 'POSE':
 
@@ -280,41 +469,59 @@ class VIEW3D_PT_cafpmainpanle(bpy.types.Panel):
                     layout.row()
                     #layout.row().label(text="Active Bone: {}".format(bone_name), icon= 'BONE_DATA')
 
-                    #Range 
-                    settings_row = layout.row(align=True)
-                    settings_box = settings_row.box()
-                    settings_box.label(text="Keyframe Range to Change", icon='SETTINGS')
-                    #damping
-                    damp_row = layout.row(align=True)
-                    damping_box = damp_row.box()
-                    damping_box.label(text = "Animation Amplitude Modifier:",icon='FORCE_HARMONIC')
+                    if active_bone.is_range_selected:
+                    
+                        #damping
+                        damp_row = layout.row(align=True)
+                        damping_box = damp_row.box()
+                        damping_box.label(text = "Animation Amplitude Modifier:",icon='FORCE_HARMONIC')
 
-                    #offset
-                    offset_row = layout.row()
-                    offset_box = offset_row.box()
-                    offset_box.label(text = "Animation Angular Offset:",icon = 'ORIENTATION_GIMBAL')
-        
-                    if active_bone is not None: 
+                        #offset
+                        offset_row = layout.row()
+                        offset_box = offset_row.box()
+                        offset_box.label(text = "Animation Angular Offset:",icon = 'ORIENTATION_GIMBAL')
 
-                        set_col = settings_box.column(align=True)
-                        set_col.prop(active_bone, "anim_start", expand=True)
-                        set_col.prop(active_bone, "anim_ignore_from_start", expand=True)
-                        set_col.prop(active_bone, "anim_ignore_from_end", expand=True)
+                        #go back to range selector
+                        
+            
+                        if active_bone is not None: 
 
-                        col = damping_box.column(align=True)
-                        col.prop(active_bone, "damping_x_scale",toggle=True, expand=True)
-                        col.prop(active_bone, "damping_y_scale",toggle=True, expand=True)
-                        col.prop(active_bone, "damping_z_scale",toggle=True, expand=True)
 
-                        col2 = offset_box.column(align=True)
-                        col2.prop(active_bone, "angular_offset_x",toggle=True, expand=True)
-                        col2.prop(active_bone, "angular_offset_y",toggle=True, expand=True)
-                        col2.prop(active_bone, "angular_offset_z",toggle=True, expand=True)
-                    else: 
-                        infor_damp = damping_box.row()
-                        info_off = offset_box.row()
-                        info_off.label(text= "select a bone")
-                        infor_damp.label(text= "select a bone")
+                            col = damping_box.column(align=True)
+                            col.prop(active_bone, "damping_x_scale",toggle=True, expand=True)
+                            col.prop(active_bone, "damping_y_scale",toggle=True, expand=True)
+                            col.prop(active_bone, "damping_z_scale",toggle=True, expand=True)
+
+                            col2 = offset_box.column(align=True)
+                            col2.prop(active_bone, "angular_offset_x",toggle=True, expand=True)
+                            col2.prop(active_bone, "angular_offset_y",toggle=True, expand=True)
+                            col2.prop(active_bone, "angular_offset_z",toggle=True, expand=True)
+
+                            col2.operator('cafp.back_to_range_selection', text= 'back to range selector')
+                            
+                        else: 
+                            infor_damp = damping_box.row()
+                            info_off = offset_box.row()
+                            info_off.label(text= "select a bone")
+                            infor_damp.label(text= "select a bone")
+                    else:
+                        #Range 
+                        settings_row = layout.row(align=True)
+                        settings_box = settings_row.box()
+                        settings_box.label(text="Keyframe Range for Change", icon='SETTINGS')
+                        if active_bone is not None: 
+                            set_col = settings_box.column(align=True)
+                            bn_name = set_col.row()
+                            bn_name.label(text='Active Bone: {}'.format(active_bone.basename))
+                            #set_col.prop(active_bone, "anim_start", expand=True)
+                            set_col.prop(active_bone, "anim_ignore_from_start", expand=True)
+                            set_col.prop(active_bone, "anim_ignore_from_end", expand=True)    
+
+                            set_col.operator('cafp.select_posebone_range', text= 'Next')
+                        else: 
+                            infor_ = settings_box.row()
+                            infor_.label(text= "select a bone")
+
 
                     #expoert and import 
                     exp_rw = layout.row(align=True)
@@ -374,7 +581,8 @@ class VIEW3D_PT_cafpmainpanle(bpy.types.Panel):
             
 
 
-classes = (VIEW3D_PT_cafpmainpanle,BoneAnimatorOffDamp,CreateTimeWarpingCurve,TimeWarper,ExportPoseBone,LoadPoseBone)
+classes = (VIEW3D_PT_cafpmainpanle,BoneAnimatorOffDamp,CreateTimeWarpingCurve,TimeWarper,ExportPoseBone,\
+    LoadPoseBone,SELECTRange,GoBackToRangeSelector)
 
 def register():
     for clas in classes:

@@ -18,6 +18,26 @@ def simple_path(input_path, use_basename=True, max_len=50):
 
     return input_path
 
+def load_json_data(self, json_path, description=None):
+        
+        try:
+            time1 = time.time()
+            with open(json_path, "r") as j_file:
+                j_database = json.load(j_file)
+                if not description:
+                    self.report({'INFO'},"Json database {} loaded in {} secs".format\
+                                (simple_path(json_path), time.time()-time1))
+                else:
+                    self.report({'INFO'},"{} loaded from {} in {} secs".format\
+                                (description, simple_path(json_path), time.time()-time1))
+                return j_database
+        except IOError:
+            if simple_path(json_path) != "":
+                self.report({'WARNING'},"File not found: {}".format(simple_path(json_path)))
+        except json.JSONDecodeError:
+            self.report({'WARNING'},"Errors in json file: {}".format(simple_path(json_path)))
+        return None
+
 class LoadPoseBone(bpy.types.Operator, ImportHelper):
     """
         Load cafp posebone properties from a JSON.
@@ -48,7 +68,7 @@ class LoadPoseBone(bpy.types.Operator, ImportHelper):
             return {'FINISHED'}
         #--------------------
         scene_poseB = context.visible_pose_bones
-        im_poseBones = self.load_json_data(self.filepath)
+        im_poseBones = load_json_data(self, self.filepath)
         #Setting the IMPORT_DATA flag 
         #global_config.IMPORT_DATA = True
 
@@ -90,25 +110,33 @@ class LoadPoseBone(bpy.types.Operator, ImportHelper):
             self.layout.label(text=message)
         bpy.context.window_manager.popup_menu(draw, title = title, icon = icon)
     
-    def load_json_data(self, json_path, description=None):
-        
-        try:
-            time1 = time.time()
-            with open(json_path, "r") as j_file:
-                j_database = json.load(j_file)
-                if not description:
-                    self.report({'INFO'},"Json database {} loaded in {} secs".format\
-                                (simple_path(json_path), time.time()-time1))
-                else:
-                    self.report({'INFO'},"{} loaded from {} in {} secs".format\
-                                (description, simple_path(json_path), time.time()-time1))
-                return j_database
-        except IOError:
-            if simple_path(json_path) != "":
-                self.report({'WARNING'},"File not found: {}".format(simple_path(json_path)))
-        except json.JSONDecodeError:
-            self.report({'WARNING'},"Errors in json file: {}".format(simple_path(json_path)))
-        return None
+#################### Export function ##################
+def export_bone_parameters_toJson(param_json, bone):
+     
+    #param_json['anim_start'] = bone.anim_start
+    param_json['anim_ignore_from_start'] = bone.anim_ignore_from_start
+    param_json['anim_ignore_from_end'] = bone.anim_ignore_from_end
+
+    x_scale = round(bone.damping_x_scale,3)
+    y_scale = round(bone.damping_y_scale,3)
+    z_scale = round(bone.damping_z_scale,3)
+    
+    param_json['damping_x_scale'] = x_scale
+    param_json['damping_y_scale'] = y_scale
+    param_json['damping_z_scale'] = z_scale
+    
+
+    x_offset = round(bone.angular_offset_x,3)
+    y_offset =round( bone.angular_offset_y,3)
+    z_offset = round(bone.angular_offset_z,3)
+
+
+    param_json['angular_offset_x'] = x_offset
+    param_json['angular_offset_y'] = y_offset
+    param_json['angular_offset_z'] = z_offset
+
+    return param_json
+
 
 class ExportPoseBone(bpy.types.Operator):
     "Export all posebone angular offset and amplitude parameter to a json file"
@@ -147,30 +175,7 @@ class ExportPoseBone(bpy.types.Operator):
         for bone in poseBones:  # type: bpy.types.PoseBone
             param_json = {}
             #range 
-            
-            param_json['anim_start'] = bone.anim_start
-            param_json['anim_ignore_from_start'] = bone.anim_ignore_from_start
-            param_json['anim_ignore_from_end'] = bone.anim_ignore_from_end
-
-            x_scale = round(bone.damping_x_scale,3)
-            y_scale = round(bone.damping_y_scale,3)
-            z_scale = round(bone.damping_z_scale,3)
-            
-            param_json['damping_x_scale'] = x_scale
-            param_json['damping_y_scale'] = y_scale
-            param_json['damping_z_scale'] = z_scale
-            
-    
-            x_offset = round(bone.angular_offset_x,3)
-            y_offset =round( bone.angular_offset_y,3)
-            z_offset = round(bone.angular_offset_z,3)
-
-        
-            param_json['angular_offset_x'] = x_offset
-            param_json['angular_offset_y'] = y_offset
-            param_json['angular_offset_z'] = z_offset
-
-
+            param_json = export_bone_parameters_toJson(param_json, bone)
 
             if len(param_json) != 0: 
                 self.report({'INFO'},"Exporting Posebone {0}".format(bone.basename))
