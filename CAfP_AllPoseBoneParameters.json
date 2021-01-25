@@ -1,0 +1,440 @@
+{
+  "mixamorig:Hips": [
+    {
+      "anim_ignore_from_start": 0,
+      "anim_ignore_from_end": 0,
+      "damping_x_scale": 1.0,
+      "damping_y_scale": 1.0,
+      "damping_z_scale": 1.0,
+      "angular_offset_x": 0,
+      "angular_offset_y": 0,
+      "angular_offset_z": 0
+    }
+  ],
+  "mixamorig:Spine": [
+    {
+      "anim_ignore_from_start": 0,
+      "anim_ignore_from_end": 0,
+      "damping_x_scale": 1.0,
+      "damping_y_scale": 1.0,
+      "damping_z_scale": 1.0,
+      "angular_offset_x": 0,
+      "angular_offset_y": 0,
+      "angular_offset_z": 0
+    }
+  ],
+  "mixamorig:Spine1": [
+    {
+      "anim_ignore_from_start": 0,
+      "anim_ignore_from_end": 0,
+      "damping_x_scale": 1.0,
+      "damping_y_scale": 1.0,
+      "damping_z_scale": 1.0,
+      "angular_offset_x": 0,
+      "angular_offset_y": 0,
+      "angular_offset_z": 0
+    }
+  ],
+  "mixamorig:Spine2": [
+    {
+      "anim_ignore_from_start": 0,
+      "anim_ignore_from_end": 0,
+      "damping_x_scale": 1.0,
+      "damping_y_scale": 1.0,
+      "damping_z_scale": 1.0,
+      "angular_offset_x": 0,
+      "angular_offset_y": 0,
+      "angular_offset_z": 0
+    }
+  ],
+  "mixamorig:Neck": [
+    {
+      "anim_ignore_from_start": 0,
+      "anim_ignore_from_end": 0,
+      "damping_x_scale": 1.0,
+      "damping_y_scale": 1.0,
+      "damping_z_scale": 1.0,
+      "angular_offset_x": 0,
+      "angular_offset_y": 0,
+      "angular_offset_z": 0
+    }
+  ],
+  "mixamorig:Head": [
+    {
+      "anim_ignore_from_start": 0,
+      "anim_ignore_from_end": 0,
+      "damping_x_scale": 1.0,
+      "damping_y_scale": 1.0,
+      "damping_z_scale": 1.0,
+      "angular_offset_x": 0,
+      "angular_offset_y": 0,
+      "angular_offset_z": 0
+    }
+  ],
+  "mixamorig:LeftShoulder": [
+    {
+      "anim_ignore_from_start": 0,
+      "anim_ignore_from_end": 0,
+      "damping_x_scale": 1.0,
+      "damping_y_scale": 1.0,
+      "damping_z_scale": 1.0,
+      "angular_offset_x": 0,
+      "angular_offset_y": 0,
+      "angular_offset_z": 0
+    }
+  ],
+  "mixamorig:LeftArm": [
+    {
+      "anim_ignore_from_start": 20,
+      "anim_ignore_from_end": 80,
+      "damping_x_scale": 1.0,
+      "damping_y_scale": 1.0,
+      "damping_z_scale": 1.0,
+      "angular_offset_x": 0,
+      "angular_offset_y": 0,
+      "angular_offset_z": 0
+    }
+  ],
+  "mixamorig:LeftForeArm": [
+    {
+      "anim_ignore_from_start": 0,
+      "anim_ignore_from_end": 0,
+      "damping_x_scale": 1.0,
+      "damping_y_scale": 1.0,
+      "damping_z_scale": 1.0,
+      "angular_offset_x": 0,
+      "angular_offset_y": 0,
+      "angular_offset_z": 0
+    }
+  ],
+  "mixamorig:LeftHand": [
+    {
+      "anim_ignore_from_start": 0,
+      "anim_ignore_from_end": 0,
+      "damping_x_scale": 1.0,
+      "damping_y_scale": 1.0,
+      "damping_z_scale": 1.0,
+      "angular_offset_x": 0,
+      "angular_offset_y": 0,
+      "angular_offset_z": 0
+    }
+  ],
+  "mixamorig:LeftHandThumb1": [
+    {
+      "anim_ignore_from_start": 0,
+      "anim_ignore_from_end": 0,
+      "damping_x_scale": 1.0,
+      "damping_y_scale": 1.0,
+      "damping_z_scale": 1.0,
+      "angular_offset_x": 0,
+      "angular_offset_y": 0,
+      "angular_offset_z": 0
+    }
+  ],
+  "mixamorig:LeftHandThumb2": [
+    {
+      "anim_ignore_from_start": 0,
+      "anim_ignore_from_end": 0,
+      "damping_x_scale": 1.0,
+      "damping_y_scale": 1.0,
+      "damping_z_scale": 1.0,
+      "angular_offset_x": 0,
+      "angular_offset_y": 0,
+      "angular_offset_z": 0
+    }
+  ],
+  "mixamorig:LeftHandThumb3": [
+    {
+      "anim_ignore_from_start": 0,
+      "anim_ignore_from_end": 0,
+      "damping_x_scale": 1.0,
+      "damping_y_scale": 1.0,
+      "damping_z_scale": 1.0,
+      "angular_offset_x": 0,
+      "angular_offset_y": 0,
+      "angular_offset_z": 0
+    }
+  ],
+  "mixamorig:LeftHandIndex1": [
+    {
+      "anim_ignore_from_start": 0,
+      "anim_ignore_from_end": 0,
+      "damping_x_scale": 1.0,
+      "damping_y_scale": 1.0,
+      "damping_z_scale": 1.0,
+      "angular_offset_x": 0,
+      "angular_offset_y": 0,
+      "angular_offset_z": 0
+    }
+  ],
+  "mixamorig:LeftHandIndex2": [
+    {
+      "anim_ignore_from_start": 0,
+      "anim_ignore_from_end": 0,
+      "damping_x_scale": 1.0,
+      "damping_y_scale": 1.0,
+      "damping_z_scale": 1.0,
+      "angular_offset_x": 0,
+      "angular_offset_y": 0,
+      "angular_offset_z": 0
+    }
+  ],
+  "mixamorig:LeftHandIndex3": [
+    {
+      "anim_ignore_from_start": 0,
+      "anim_ignore_from_end": 0,
+      "damping_x_scale": 1.0,
+      "damping_y_scale": 1.0,
+      "damping_z_scale": 1.0,
+      "angular_offset_x": 0,
+      "angular_offset_y": 0,
+      "angular_offset_z": 0
+    }
+  ],
+  "mixamorig:RightShoulder": [
+    {
+      "anim_ignore_from_start": 0,
+      "anim_ignore_from_end": 0,
+      "damping_x_scale": 1.0,
+      "damping_y_scale": 1.0,
+      "damping_z_scale": 1.0,
+      "angular_offset_x": 0,
+      "angular_offset_y": 0,
+      "angular_offset_z": 0
+    }
+  ],
+  "mixamorig:RightArm": [
+    {
+      "anim_ignore_from_start": 0,
+      "anim_ignore_from_end": 0,
+      "damping_x_scale": 1.0,
+      "damping_y_scale": 1.0,
+      "damping_z_scale": 1.0,
+      "angular_offset_x": 0,
+      "angular_offset_y": 0,
+      "angular_offset_z": 0
+    },
+    {
+      "anim_ignore_from_start": 0,
+      "anim_ignore_from_end": 0,
+      "damping_x_scale": 0.0,
+      "damping_y_scale": 0.5,
+      "damping_z_scale": 0.0,
+      "angular_offset_x": 70,
+      "angular_offset_y": -5,
+      "angular_offset_z": -20
+    },
+    {
+      "anim_ignore_from_start": 0,
+      "anim_ignore_from_end": 20,
+      "damping_x_scale": 1.0,
+      "damping_y_scale": 1.0,
+      "damping_z_scale": 1.0,
+      "angular_offset_x": 0,
+      "angular_offset_y": -5,
+      "angular_offset_z": 0
+    },
+    {
+      "anim_ignore_from_start": 0,
+      "anim_ignore_from_end": 123,
+      "damping_x_scale": 1.0,
+      "damping_y_scale": 1.0,
+      "damping_z_scale": 1.0,
+      "angular_offset_x": 0,
+      "angular_offset_y": -5,
+      "angular_offset_z": 0
+    }
+  ],
+  "mixamorig:RightForeArm": [
+    {
+      "anim_ignore_from_start": 0,
+      "anim_ignore_from_end": 0,
+      "damping_x_scale": 1.0,
+      "damping_y_scale": 1.0,
+      "damping_z_scale": 1.0,
+      "angular_offset_x": 0,
+      "angular_offset_y": 0,
+      "angular_offset_z": 0
+    }
+  ],
+  "mixamorig:RightHand": [
+    {
+      "anim_ignore_from_start": 0,
+      "anim_ignore_from_end": 0,
+      "damping_x_scale": 1.0,
+      "damping_y_scale": 1.0,
+      "damping_z_scale": 1.0,
+      "angular_offset_x": 0,
+      "angular_offset_y": 0,
+      "angular_offset_z": 0
+    }
+  ],
+  "mixamorig:RightHandThumb1": [
+    {
+      "anim_ignore_from_start": 0,
+      "anim_ignore_from_end": 0,
+      "damping_x_scale": 1.0,
+      "damping_y_scale": 1.0,
+      "damping_z_scale": 1.0,
+      "angular_offset_x": 0,
+      "angular_offset_y": 0,
+      "angular_offset_z": 0
+    }
+  ],
+  "mixamorig:RightHandThumb2": [
+    {
+      "anim_ignore_from_start": 0,
+      "anim_ignore_from_end": 0,
+      "damping_x_scale": 1.0,
+      "damping_y_scale": 1.0,
+      "damping_z_scale": 1.0,
+      "angular_offset_x": 0,
+      "angular_offset_y": 0,
+      "angular_offset_z": 0
+    }
+  ],
+  "mixamorig:RightHandThumb3": [
+    {
+      "anim_ignore_from_start": 0,
+      "anim_ignore_from_end": 0,
+      "damping_x_scale": 1.0,
+      "damping_y_scale": 1.0,
+      "damping_z_scale": 1.0,
+      "angular_offset_x": 0,
+      "angular_offset_y": 0,
+      "angular_offset_z": 0
+    }
+  ],
+  "mixamorig:RightHandIndex1": [
+    {
+      "anim_ignore_from_start": 0,
+      "anim_ignore_from_end": 0,
+      "damping_x_scale": 1.0,
+      "damping_y_scale": 1.0,
+      "damping_z_scale": 1.0,
+      "angular_offset_x": 0,
+      "angular_offset_y": 0,
+      "angular_offset_z": 0
+    }
+  ],
+  "mixamorig:RightHandIndex2": [
+    {
+      "anim_ignore_from_start": 0,
+      "anim_ignore_from_end": 0,
+      "damping_x_scale": 1.0,
+      "damping_y_scale": 1.0,
+      "damping_z_scale": 1.0,
+      "angular_offset_x": 0,
+      "angular_offset_y": 0,
+      "angular_offset_z": 0
+    }
+  ],
+  "mixamorig:RightHandIndex3": [
+    {
+      "anim_ignore_from_start": 0,
+      "anim_ignore_from_end": 0,
+      "damping_x_scale": 1.0,
+      "damping_y_scale": 1.0,
+      "damping_z_scale": 1.0,
+      "angular_offset_x": 0,
+      "angular_offset_y": 0,
+      "angular_offset_z": 0
+    }
+  ],
+  "mixamorig:LeftUpLeg": [
+    {
+      "anim_ignore_from_start": 0,
+      "anim_ignore_from_end": 0,
+      "damping_x_scale": 1.0,
+      "damping_y_scale": 1.0,
+      "damping_z_scale": 1.0,
+      "angular_offset_x": 0,
+      "angular_offset_y": 0,
+      "angular_offset_z": 0
+    }
+  ],
+  "mixamorig:LeftLeg": [
+    {
+      "anim_ignore_from_start": 0,
+      "anim_ignore_from_end": 0,
+      "damping_x_scale": 1.0,
+      "damping_y_scale": 1.0,
+      "damping_z_scale": 1.0,
+      "angular_offset_x": 0,
+      "angular_offset_y": 0,
+      "angular_offset_z": 0
+    }
+  ],
+  "mixamorig:LeftFoot": [
+    {
+      "anim_ignore_from_start": 0,
+      "anim_ignore_from_end": 0,
+      "damping_x_scale": 1.0,
+      "damping_y_scale": 1.0,
+      "damping_z_scale": 1.0,
+      "angular_offset_x": 0,
+      "angular_offset_y": 0,
+      "angular_offset_z": 0
+    }
+  ],
+  "mixamorig:LeftToeBase": [
+    {
+      "anim_ignore_from_start": 0,
+      "anim_ignore_from_end": 0,
+      "damping_x_scale": 1.0,
+      "damping_y_scale": 1.0,
+      "damping_z_scale": 1.0,
+      "angular_offset_x": 0,
+      "angular_offset_y": 0,
+      "angular_offset_z": 0
+    }
+  ],
+  "mixamorig:RightUpLeg": [
+    {
+      "anim_ignore_from_start": 0,
+      "anim_ignore_from_end": 0,
+      "damping_x_scale": 1.0,
+      "damping_y_scale": 1.0,
+      "damping_z_scale": 1.0,
+      "angular_offset_x": 0,
+      "angular_offset_y": 0,
+      "angular_offset_z": 0
+    }
+  ],
+  "mixamorig:RightLeg": [
+    {
+      "anim_ignore_from_start": 0,
+      "anim_ignore_from_end": 0,
+      "damping_x_scale": 1.0,
+      "damping_y_scale": 1.0,
+      "damping_z_scale": 1.0,
+      "angular_offset_x": 0,
+      "angular_offset_y": 0,
+      "angular_offset_z": 0
+    }
+  ],
+  "mixamorig:RightFoot": [
+    {
+      "anim_ignore_from_start": 0,
+      "anim_ignore_from_end": 0,
+      "damping_x_scale": 1.0,
+      "damping_y_scale": 1.0,
+      "damping_z_scale": 1.0,
+      "angular_offset_x": 0,
+      "angular_offset_y": 0,
+      "angular_offset_z": 0
+    }
+  ],
+  "mixamorig:RightToeBase": [
+    {
+      "anim_ignore_from_start": 0,
+      "anim_ignore_from_end": 0,
+      "damping_x_scale": 1.0,
+      "damping_y_scale": 1.0,
+      "damping_z_scale": 1.0,
+      "angular_offset_x": 0,
+      "angular_offset_y": 0,
+      "angular_offset_z": 0
+    }
+  ]
+}

@@ -38,6 +38,18 @@ def load_json_data(self, json_path, description=None):
             self.report({'WARNING'},"Errors in json file: {}".format(simple_path(json_path)))
         return None
 
+def isInCurrDirectory(file_name):
+    filepath = bpy.data.filepath
+    directory = os.path.dirname(filepath)
+    _, _, filenames = next(os.walk(directory))
+    for files_ in filenames:
+        if files_ == file_name:
+            print('file {} already in the direcotry'.format(files_))
+            return True 
+    return False
+
+
+
 class LoadPoseBone(bpy.types.Operator, ImportHelper):
     """
         Load cafp posebone properties from a JSON.
@@ -111,7 +123,7 @@ class LoadPoseBone(bpy.types.Operator, ImportHelper):
         bpy.context.window_manager.popup_menu(draw, title = title, icon = icon)
     
 #################### Export function ##################
-def export_bone_parameters_toJson(param_json, bone):
+def get_bone_parameters_forJson(param_json, bone):
      
     #param_json['anim_start'] = bone.anim_start
     param_json['anim_ignore_from_start'] = bone.anim_ignore_from_start
@@ -170,12 +182,12 @@ class ExportPoseBone(bpy.types.Operator):
         out_data = {}
 
         #metadeta
-        out_data['rig_name'] =obj.name
+        out_data['name'] =obj.name
 
         for bone in poseBones:  # type: bpy.types.PoseBone
             param_json = {}
             #range 
-            param_json = export_bone_parameters_toJson(param_json, bone)
+            param_json = get_bone_parameters_forJson(param_json, bone)
 
             if len(param_json) != 0: 
                 self.report({'INFO'},"Exporting Posebone {0}".format(bone.basename))
@@ -190,7 +202,7 @@ class ExportPoseBone(bpy.types.Operator):
             with open(self.filepath, 'w') as out_file:
                 json.dump(obj=out_data, fp=out_file, indent=2)
         else: 
-            self.report({'ERROR'}, "There are no changes to the selected bone(s)")
+            self.report({'ERROR'}, "Export out_data is empty")
 
         return {'FINISHED'}
 

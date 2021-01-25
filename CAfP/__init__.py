@@ -16,7 +16,7 @@ bl_info = {
     "author" : "daksitha",
     "description" : "",
     "blender" : (2, 83, 0),
-    "version" : (0, 0, 1),
+    "version" : (0, 1, 0),
     "location" : "View3D",
     "warning" : "",
     "category" : "Animation"
@@ -26,6 +26,8 @@ import bpy
 from bpy.utils import unregister_class
 from bpy.utils import register_class
 import os
+import json
+from bpy.app.handlers import save_post
 
 #from . damping_tools import DampAnimation
 #from . offset_tools import AngularOffsetAnimation
@@ -37,6 +39,10 @@ from . file_op import ExportPoseBone
 from . file_op import LoadPoseBone
 
 import CAfP.global_config as global_config
+
+from . import file_op
+################# Globals #############
+BONE_PARAMETERS_FILE_NAME = "CAfP_AllPoseBoneParameters.json"
 
 ################## bone properties ###################
 def update_bone_animation(self, context):
@@ -207,42 +213,52 @@ bpy.types.Scene.nla_initial_x = bpy.props.StringProperty(
         description="initial location of timewarping control curve",
         )
 
-def export_bone_parameters_toJson(param_json, bone):
+
+def getAllPoseBoneParameters(self, activeArm:bpy.types.Armature):
+    out_data = {}
+    poseBones = activeArm.pose.bones
+    try:
+        #get parameters that are saved
+        path =bpy.path.abspath("//{}".format(BONE_PARAMETERS_FILE_NAME))
+        #out_data['armature_name'] = '{}'.format(obj.name)
+        if file_op.isInCurrDirectory(BONE_PARAMETERS_FILE_NAME):
+            print("Extracting posebone parameters from {} ...".format(BONE_PARAMETERS_FILE_NAME))
+            with open(path, 'r') as j_file:
+                
+                j_database = json.loads(j_file.read())
+                #print(' j_database: {}'.format(j_database))
+                
+                if 'name' in j_database:
+                    if j_database['name'] == activeArm.name:
+                        print("WARNING: {} is not saved for the current armature object ".format(BONE_PARAMETERS_FILE_NAME))
+                        
+                out_data = j_database 
+        else:
+            # for bone in poseBones:  # type: bpy.types.PoseBone
+            #     param_json = {}
+            #     #range 
+            #     param_json = file_op.export_bone_parameters_toJson(param_json, bone)
+
+            #     if len(param_json) != 0: 
+                    
+            #         out_data['{0}'.format(bone.basename)] = []
+            #         out_data['{0}'.format(bone.basename)].append(param_json)
+            out_data['name'] = activeArm.name
+            with open(path, 'w') as out_file:
+                json.dump(obj=out_data, fp=out_file, indent=2)
+                print('Creating {0} at {1} ..'.format(BONE_PARAMETERS_FILE_NAME, file_op.simple_path(path)))
+
+    except OSError as err:
+        self.report({"ERROR"}, "{} while creating CAfP_temp_bone.json. Please save the blend file".format(err))
+        #print('Error {} while creating CAfP_temp_bone.json. Please save the blend file'.format(err))
      
-    #param_json['anim_start'] = bone.anim_start
-    param_json['anim_ignore_from_start'] = bone.anim_ignore_from_start
-    param_json['anim_ignore_from_end'] = bone.anim_ignore_from_end
-
-    x_scale = round(bone.damping_x_scale,3)
-    y_scale = round(bone.damping_y_scale,3)
-    z_scale = round(bone.damping_z_scale,3)
+    except IOError as err:
+        if bpy.data.is_saved:
+            self.report({"ERROR"}, "{},while creating {}. Maybe save the blend file".format(err,bpy.path.basename(path)))
+    except json.JSONDecodeError:
+        self.report({"ERROR"}, "Errors in json file: {}".format(bpy.path.basename(path)))
     
-    param_json['damping_x_scale'] = x_scale
-    param_json['damping_y_scale'] = y_scale
-    param_json['damping_z_scale'] = z_scale
-    
-
-    x_offset = round(bone.angular_offset_x,3)
-    y_offset =round( bone.angular_offset_y,3)
-    z_offset = round(bone.angular_offset_z,3)
-
-
-    param_json['angular_offset_x'] = x_offset
-    param_json['angular_offset_y'] = y_offset
-    param_json['angular_offset_z'] = z_offset
-
-    return param_json
-
-
-def isInCurrDirectory(file_name):
-    filepath = bpy.data.filepath
-    directory = os.path.dirname(filepath)
-    _, _, filenames = next(os.walk(directory))
-    for files_ in filenames:
-        if files_ == file_name:
-            print('file {} already in the direcotry'.format(files_))
-            return True 
-    return False
+    return out_data
 
      
 class SELECTRange(bpy.types.Operator):
@@ -274,33 +290,72 @@ class SELECTRange(bpy.types.Operator):
     
     def execute(self,context):
         import json 
-        obj = bpy.context.active_object
+        active_armature = bpy.context.active_object
         active_bone = bpy.context.active_pose_bone # type: bpy.types.PoseBone
-        try:
-            #save a file in the current directory
-            path =bpy.path.abspath("//CAfP_Temp_BProperties.json")
-            #print(path)
-            out_data = {}
-            out_data['armature_name'] = '{}'.format(obj.name)
-            if not isInCurrDirectory('CAfP_Temp_BProperties.json'):
-                with open(path, 'w') as out_file:
-                    json.dump(obj=out_data, fp=out_file, indent=2)
-                    self.report({'INFO'}, 'Create a CAfP temp_bone.json at {}'.format(path))
 
-            active_bone.is_range_selected = True
-        except OSError as err:
-            self.report('WARNING','Error {} while creating CAfP_temp_bone.json. Please save the blend file'.format(err))
-            active_bone.is_range_selected =  False
-        except IOError as err:
-            active_bone.is_range_selected = False
-            if path != "":
-                self.report({'WARNING'},"{},while creating {}. Please save the blend file".format(err,bpy.path.basename(path)))
-        except json.JSONDecodeError:
-            active_bone.is_range_selected = False
-            self.report({'WARNING'},"Errors in json file: {}".format(bpy.path.basename(path)))
+        if not len(global_config.BONE_PARAMETERS_JSON):
+            global_config.BONE_PARAMETERS_JSON = getAllPoseBoneParameters(self,active_armature)
+
+        active_bone.is_range_selected = True
+
+        # try:
+        #     #save a file in the current directory
+        #     path =bpy.path.abspath("//CAfP_Temp_BProperties.json")
+        #     #print(path)
+        #     out_data = {}
+        #     out_data['armature_name'] = '{}'.format(obj.name)
+        #     if not isInCurrDirectory('CAfP_Temp_BProperties.json'):
+        #         with open(path, 'w') as out_file:
+        #             json.dump(obj=out_data, fp=out_file, indent=2)
+        #             self.report({'INFO'}, 'Create a CAfP temp_bone.json at {}'.format(path))
+
+        #     active_bone.is_range_selected = True
+        # except OSError as err:
+        #     self.report('WARNING','Error {} while creating CAfP_temp_bone.json. Please save the blend file'.format(err))
+        #     active_bone.is_range_selected =  False
+        # except IOError as err:
+        #     active_bone.is_range_selected = False
+        #     if path != "":
+        #         self.report({'WARNING'},"{},while creating {}. Please save the blend file".format(err,bpy.path.basename(path)))
+        # except json.JSONDecodeError:
+        #     active_bone.is_range_selected = False
+        #     self.report({'WARNING'},"Errors in json file: {}".format(bpy.path.basename(path)))
+
+
         
         
         return {'FINISHED'}
+
+
+def appendBoneData(self, active_bone):
+    try:
+
+        #time1 = time.time()
+        path =bpy.path.abspath(BONE_PARAMETERS_FILE_NAME)
+        param_json = {}
+        bone_dictionary = json.loads(global_config.BONE_PARAMETERS_JSON)
+        bone_name = active_bone.name
+
+        if bone_name in bone_dictionary:
+            param_json = file_op.get_bone_parameters_forJson(param_json,active_bone)
+            bone_dictionary['{}'.format(bone_name)].append(param_json)
+        else:
+            bone_dictionary['{}'.format(bone_name)] = []
+            bone_dictionary['{}'.format(bone_name)].append(param_json)
+            self.report({'INFO'},"{} parameters set".format(bone_name))
+
+        global_config.BONE_PARAMETERS_JSON = bone_dictionary
+        out_data = bone_dictionary
+        with open(path, 'w') as output:
+            json.dump(obj=out_data, fp=output, indent=2)
+
+    except OSError as err:
+        self.report('WARNING','Error {} while creating CAfP_temp_bone.json. Please save the blend file'.format(err))
+    except IOError as err:
+        if bpy.data.is_saved:
+            self.report({'WARNING'},"{},while creating {}. Please save the blend file".format(err,bpy.path.basename(path)))
+    except json.JSONDecodeError as err:
+        self.report({'WARNING'},"Errors {}in json file: {}".format(err, bpy.path.basename(path)))
 
 class GoBackToRangeSelector(bpy.types.Operator):
     """
@@ -331,56 +386,51 @@ class GoBackToRangeSelector(bpy.types.Operator):
         import time
 
         
-        obj = bpy.context.active_object
+        #obj = bpy.context.active_object
         #save a file in the current directory
-        
         active_bone = bpy.context.active_pose_bone
-
-        try:
-
-            time1 = time.time()
-            path =bpy.path.abspath("//CAfP_Temp_BProperties.json")
-            out_data = {}
-            with open(path, 'r') as j_file:
-                
-                j_database = json.loads(j_file.read())
-                print(' j_database: {}'.format(j_database))
-                
-                if 'name' in j_database:
-                    if j_database['name'] == obj.name:
-                        self.report({'WARNING'},"Json database and Armature names are not matching")
-                
-                param_json= {}
-                param_json = export_bone_parameters_toJson(param_json, active_bone)
-                if active_bone.name in j_database:
-                    j_database['{}'.format(active_bone.name)].append(param_json)
-                else:
-                    j_database['{}'.format(active_bone.name)] =[]
-                    j_database['{}'.format(active_bone.name)].append(param_json)
-        
-                out_data = j_database
-
-            with open(path, 'w') as output:
-                json.dump(obj=out_data, fp=output, indent=2)
-
-                #set the flag to change the ui
-            
-            active_bone.is_range_selected = False
-
-            self.report({'INFO'},"CAfP_Temp_BProperties {} added in {} secs".format\
-                                (active_bone.name, time.time()-time1))
-        except OSError as err:
-            self.report('WARNING','Error {} while creating CAfP_temp_bone.json. Please save the blend file'.format(err))
-        except IOError as err:
-            if path != "":
-                self.report({'WARNING'},"{},while creating {}. Please save the blend file".format(err,bpy.path.basename(path)))
-        except json.JSONDecodeError as err:
-            self.report({'WARNING'},"Errors {}in json file: {}".format(err, bpy.path.basename(path)))
+        appendBoneData(self,active_bone)
+        active_bone.is_range_selected = False
 
 
         return {'FINISHED'}
+   
+class ApplyBoneParameters(bpy.types.Operator):
+    """
+        Cash/Save pose bone configurations for future use .
+    """
+    bl_label = 'Save PoseBone configuration'
+    bl_idname = 'cafp.save_posebone_configuration'
+
+    @classmethod
+    def poll(cls, context):
+
+        if not (context.mode == 'POSE'):
+            return False
+
+        obj = context.active_object  # type: bpy.types.Object
+        active_bone = bpy.context.active_pose_bone # type: bpy.types.PoseBone
+        if obj is not None:
+            if obj.type == 'ARMATURE':
+                anim_data = obj.animation_data
+                if anim_data is not None:
+                    act = anim_data.action
+                    if act is not None:
+                        if active_bone is not None:
+                            return True
+
+    def execute(self,context):
+        import json
+        import time
 
         
+        #obj = bpy.context.active_object
+        #save a file in the current directory
+        
+        active_bone = bpy.context.active_pose_bone
+        appendBoneData(self,active_bone)
+
+        return {'FINISHED'}
 
 
 
@@ -389,6 +439,8 @@ class GoBackToRangeSelector(bpy.types.Operator):
 ##############################   main panel  ###########################################
 isArmWithAnim = False
 isArmWithNLA = False
+
+
 
 class VIEW3D_PT_cafpmainpanle(bpy.types.Panel):
     bl_label = "CAfP_Panel"
@@ -407,6 +459,7 @@ class VIEW3D_PT_cafpmainpanle(bpy.types.Panel):
         scene = context.scene
 
         box_info = self.layout.box()
+        
 
         if active_object is not None:
             if active_object.type == 'ARMATURE':
@@ -464,28 +517,30 @@ class VIEW3D_PT_cafpmainpanle(bpy.types.Panel):
                 
                 if global_config.gui_status.startswith("ACTIVE"):
                     active_bone = bpy.context.active_pose_bone
-                    #TODO:Active still it has no bone selected
-                    #bone_name = active_bone.basename
                     layout.row()
+                    #active_armature = context.active_object
                     #layout.row().label(text="Active Bone: {}".format(bone_name), icon= 'BONE_DATA')
 
-                    if active_bone.is_range_selected:
                     
-                        #damping
-                        damp_row = layout.row(align=True)
-                        damping_box = damp_row.box()
-                        damping_box.label(text = "Animation Amplitude Modifier:",icon='FORCE_HARMONIC')
+                    
 
-                        #offset
-                        offset_row = layout.row()
-                        offset_box = offset_row.box()
-                        offset_box.label(text = "Animation Angular Offset:",icon = 'ORIENTATION_GIMBAL')
 
-                        #go back to range selector
+                   
+                    #go back to range selector
                         
             
-                        if active_bone is not None: 
+                    if active_bone is not None: 
 
+                        if active_bone.is_range_selected:
+                            #damping
+                            damp_row = layout.row(align=True)
+                            damping_box = damp_row.box()
+                            damping_box.label(text = "Animation Amplitude Modifier:",icon='FORCE_HARMONIC')
+
+                            #offset
+                            offset_row = layout.row()
+                            offset_box = offset_row.box()
+                            offset_box.label(text = "Animation Angular Offset:",icon = 'ORIENTATION_GIMBAL')
 
                             col = damping_box.column(align=True)
                             col.prop(active_bone, "damping_x_scale",toggle=True, expand=True)
@@ -497,19 +552,15 @@ class VIEW3D_PT_cafpmainpanle(bpy.types.Panel):
                             col2.prop(active_bone, "angular_offset_y",toggle=True, expand=True)
                             col2.prop(active_bone, "angular_offset_z",toggle=True, expand=True)
 
-                            col2.operator('cafp.back_to_range_selection', text= 'back to range selector')
-                            
-                        else: 
-                            infor_damp = damping_box.row()
-                            info_off = offset_box.row()
-                            info_off.label(text= "select a bone")
-                            infor_damp.label(text= "select a bone")
-                    else:
-                        #Range 
-                        settings_row = layout.row(align=True)
-                        settings_box = settings_row.box()
-                        settings_box.label(text="Keyframe Range for Change", icon='SETTINGS')
-                        if active_bone is not None: 
+                            col3 = offset_box.row(align=True)
+                            col3.operator('cafp.save_posebone_configuration', text= 'Save')
+                            col3.operator('cafp.back_to_range_selection', text= 'Back')
+                        else:
+                            #Range 
+                            settings_row = layout.row(align=True)
+                            settings_box = settings_row.box()
+                            settings_box.label(text="Keyframe Range for Change", icon='SETTINGS')
+
                             set_col = settings_box.column(align=True)
                             bn_name = set_col.row()
                             bn_name.label(text='Active Bone: {}'.format(active_bone.basename))
@@ -518,10 +569,14 @@ class VIEW3D_PT_cafpmainpanle(bpy.types.Panel):
                             set_col.prop(active_bone, "anim_ignore_from_end", expand=True)    
 
                             set_col.operator('cafp.select_posebone_range', text= 'Next')
-                        else: 
-                            infor_ = settings_box.row()
-                            infor_.label(text= "select a bone")
+                        
+                    else: 
+                        warning_ = layout.row(align=True)
+                        warning_box = warning_.box()
+                        warning_box.label(text="WARNING", icon='BONE_DATA')
+                        warning_box.row().label(text="Select single bonea")
 
+                       
 
                     #expoert and import 
                     exp_rw = layout.row(align=True)
@@ -582,7 +637,7 @@ class VIEW3D_PT_cafpmainpanle(bpy.types.Panel):
 
 
 classes = (VIEW3D_PT_cafpmainpanle,BoneAnimatorOffDamp,CreateTimeWarpingCurve,TimeWarper,ExportPoseBone,\
-    LoadPoseBone,SELECTRange,GoBackToRangeSelector)
+    LoadPoseBone,SELECTRange,GoBackToRangeSelector,ApplyBoneParameters)
 
 def register():
     for clas in classes:
