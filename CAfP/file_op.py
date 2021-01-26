@@ -48,6 +48,41 @@ def isInCurrDirectory(file_name):
             return True 
     return False
 
+def get_bone_parameters_forJson(param_json, bone):
+     
+    isDefaultValue = True
+    #param_json['anim_start'] = bone.anim_start
+    param_json["anim_ignore_from_start"] = bone.anim_ignore_from_start
+    param_json["anim_ignore_from_end"] = bone.anim_ignore_from_end
+
+    x_scale = round(bone.damping_x_scale,3)
+    y_scale = round(bone.damping_y_scale,3)
+    z_scale = round(bone.damping_z_scale,3)
+
+    scales = [x_scale,y_scale,z_scale]
+    for s in scales:
+        if s != 1.0:
+            isDefaultValue = False
+
+    param_json["damping_x_scale"] = x_scale  
+    param_json["damping_y_scale"] = y_scale
+    param_json["damping_z_scale"] = z_scale
+   
+    x_offset = round(bone.angular_offset_x,3)
+    y_offset =round( bone.angular_offset_y,3)
+    z_offset = round(bone.angular_offset_z,3)
+    
+    offsets = [x_offset,y_offset,z_offset]
+    for f in offsets:
+        if f != 0:
+            isDefaultValue = False
+
+    param_json["angular_offset_x"] = x_offset
+    param_json["angular_offset_y"] = y_offset
+    param_json["angular_offset_z"] = z_offset
+
+    return param_json,isDefaultValue
+
 
 
 class LoadPoseBone(bpy.types.Operator, ImportHelper):
@@ -79,40 +114,17 @@ class LoadPoseBone(bpy.types.Operator, ImportHelper):
             self.ShowMessageBox(message = "May not a valid file !")
             return {'FINISHED'}
         #--------------------
-        scene_poseB = context.visible_pose_bones
+        #scene_poseB = context.visible_pose_bones
+        scene_poseB = context.selected_pose_bones_from_active_object
         im_poseBones = load_json_data(self, self.filepath)
+
         #Setting the IMPORT_DATA flag 
-        #global_config.IMPORT_DATA = True
-
         if im_poseBones is not None:
-            for im_name, im_val_json in im_poseBones.items():
-                #print("key {0} value{1}".format(im_name,im_val_json))
-                for curr_bone in scene_poseB:
-                    curr_bn = curr_bone.basename
-                    im_bn = im_name
-
-                   
-                    #BUG: mixamorig start with a different character
-                    if im_bn.startswith('mixamorig'):
-                        split_im = im_bn.split(":",1)
-                        if len(split_im)==2:
-                            im_bn = split_im[1]
-                            #im_rg_name = split_im[0]
-                    if curr_bn.startswith('mixamorig'):
-                        split_curr = curr_bn.split(":",1)
-                        if len(split_curr) ==2:
-                            curr_bn = split_curr[1]
-                            #curr_rg_name = split_curr[0]
-
-
-                    if curr_bn == im_bn:
-                        for im_props, prp_value in im_val_json[0].items():
-                            setattr(curr_bone,im_props,prp_value)
-
-                            #print("Set {0}: {1} = {2}".format(curr_bone.basename,im_props,prp_value))
-        #run the oporator to update the changes
-        #bpy.ops.cafp.boneanimator()
-        #global_config.IMPORT_DATA=False 
+            global_config.IMPORT_DATA_FLAG = True
+            global_config.IMPORT_DATA_ = im_poseBones
+            #run the oporator to update the changes
+            bpy.ops.cafp.boneanimator()
+        
 
         return {'FINISHED'}
     
@@ -123,33 +135,8 @@ class LoadPoseBone(bpy.types.Operator, ImportHelper):
         bpy.context.window_manager.popup_menu(draw, title = title, icon = icon)
     
 #################### Export function ##################
-def get_bone_parameters_forJson(param_json, bone):
-     
-    #param_json['anim_start'] = bone.anim_start
-    param_json['anim_ignore_from_start'] = bone.anim_ignore_from_start
-    param_json['anim_ignore_from_end'] = bone.anim_ignore_from_end
 
-    x_scale = round(bone.damping_x_scale,3)
-    y_scale = round(bone.damping_y_scale,3)
-    z_scale = round(bone.damping_z_scale,3)
-    
-    param_json['damping_x_scale'] = x_scale
-    param_json['damping_y_scale'] = y_scale
-    param_json['damping_z_scale'] = z_scale
-    
-
-    x_offset = round(bone.angular_offset_x,3)
-    y_offset =round( bone.angular_offset_y,3)
-    z_offset = round(bone.angular_offset_z,3)
-
-
-    param_json['angular_offset_x'] = x_offset
-    param_json['angular_offset_y'] = y_offset
-    param_json['angular_offset_z'] = z_offset
-
-    return param_json
-
-
+#not really needed this since we save parameters anyways
 class ExportPoseBone(bpy.types.Operator):
     "Export all posebone angular offset and amplitude parameter to a json file"
 
@@ -187,7 +174,7 @@ class ExportPoseBone(bpy.types.Operator):
         for bone in poseBones:  # type: bpy.types.PoseBone
             param_json = {}
             #range 
-            param_json = get_bone_parameters_forJson(param_json, bone)
+            param_json,isDefaultValue = get_bone_parameters_forJson(param_json, bone)
 
             if len(param_json) != 0: 
                 self.report({'INFO'},"Exporting Posebone {0}".format(bone.basename))

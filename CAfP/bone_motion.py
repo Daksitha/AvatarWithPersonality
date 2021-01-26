@@ -5,8 +5,10 @@ from mathutils import Quaternion
 from mathutils import Euler
 from mathutils import Vector
 import math
+import json
 
 import CAfP.global_config as global_config
+from . import file_op
 
 
 def bone_animator(self, act: bpy.types.Action, bone_name: str, damp_weights: Vector, angular_offset: Vector, tail_crop=0, head_crop=0, crop_start=0) -> None:
@@ -96,9 +98,10 @@ def bone_animator(self, act: bpy.types.Action, bone_name: str, damp_weights: Vec
     else:
         self.report({'WARNING'}, "Unexpected keyframe crop. n_keyframes {0}, crop (start_kf:{1},head_crop_kf:{2},tail_crop_kf:{3} "\
             .format(n_keyframes_w,crop_start,head_crop,tail_crop))
-        minKeyframe = 0
-        maxKeyframe = n_keyframes_w
-        self.report({'INFO'}, "Applying to all keyframes from {} till {}".format(minKeyframe,maxKeyframe) ) 
+        # minKeyframe = 0
+        # maxKeyframe = n_keyframes_w
+        # self.report({'INFO'}, "Applying to all keyframes from {} till {}".format(minKeyframe,maxKeyframe) ) 
+        return
 
 
     for i in range(minKeyframe,maxKeyframe):
@@ -175,6 +178,111 @@ def get_bone_properties(bone):
         edit_range = [s_crop,head_crop,tail_crop]
         return damping_weights,angular_offset,edit_range
 
+def getAllPoseBoneParameters(self, activeArm:bpy.types.Armature, path):
+    out_data = {}
+    poseBones = activeArm.pose.bones
+    try:
+        #get parameters that are saved
+        
+        out_data["name"] = "{}".format(activeArm.name)
+      
+        if file_op.isInCurrDirectory(global_config.BONE_PARAMETERS_FILE_NAME):
+            self.report({"INFO"},"Extracting posebone parameters from {} ...".format(global_config.BONE_PARAMETERS_FILE_NAME))
+            with open(path, 'r') as j_file:
+                
+                j_database = json.loads(j_file.read())
+
+                if "name" in j_database:
+                    if j_database["name"] != activeArm.name:
+                        self.report({"WARNING"}, " Armature name missmatch {} != {}".format(activeArm.name,j_database["name"]))
+                        
+                out_data = j_database 
+        else:
+            count = 0
+            for bone in poseBones:  # type: bpy.types.PoseBone
+                param_json = {}
+                #range 
+                param_json,isDefaultValue = file_op.get_bone_parameters_forJson(param_json, bone)
+                if not isDefaultValue: 
+                    if param_json is not None: 
+                        out_data['{0}'.format(bone.basename)] = []
+                        out_data['{0}'.format(bone.basename)].append(param_json)
+                        count+=count
+                    else:
+                        self.report({"ERROR"}, "getAllPoseBoneParameters Error: param_json {},isDefaultValue {}  ".format(param_json,isDefaultValue))
+                        
+            self.report({"INFO"}, "There are {} number of bones with non default values".format(count))
+
+            
+            with open(path, 'w') as out_file:
+                json.dump(obj=out_data, fp=out_file, indent=2)
+                print('Creating {0} at {1} ..'.format(global_config.BONE_PARAMETERS_FILE_NAME, file_op.simple_path(path)))
+
+    except OSError as err:
+        self.report({"ERROR"}, "getAllPoseBoneParameters Error: {} ".format(err))
+        #print('Error {} while creating CAfP_temp_bone.json. Please save the blend file'.format(err))
+     
+    except IOError as err:
+        if bpy.data.is_saved:
+            self.report({"ERROR"}, "getAllPoseBoneParameters Error: {},while creating {}. Maybe save the blend file".format(err,bpy.path.basename(path)))
+    except json.JSONDecodeError:
+        self.report({"ERROR"}, "getAllPoseBoneParameters Error: in json file: {}".format(bpy.path.basename(path)))
+    
+    return out_data
+
+
+def appendBoneData(self, active_bone,param_json, path):
+    try:
+        bone_dictionary = global_config.BONE_PARAMETERS_JSON
+        bone_name = active_bone.name
+        isRangeExist = False
+        #param_json = {}
+        #param_json,isDefaultValue = file_op.get_bone_parameters_forJson(param_json,active_bone)
+        
+        if bone_name in bone_dictionary:
+            bone_array = bone_dictionary["{}".format(bone_name)] #Json Array
+            
+            for item in bone_array:
+                if item["anim_ignore_from_start"] == param_json["anim_ignore_from_start"] and item["anim_ignore_from_end"] \
+                    == param_json["anim_ignore_from_end"]:
+                    isRangeExsit = True
+                    item["damping_x_scale"] = param_json["damping_x_scale"] 
+                    item["damping_y_scale"] = param_json["damping_y_scale"] 
+                    item["damping_z_scale"] = param_json["damping_z_scale"] 
+
+                    item["angular_offset_x"] = param_json["angular_offset_x"]
+                    item["angular_offset_y"] = param_json["angular_offset_y"]
+                    item["angular_offset_z"] = param_json["angular_offset_z"]
+
+                    self.report({'INFO'},"{} Replace range: start:{} end:{}".\
+                        format(bone_name,item["anim_ignore_from_start"],item["anim_ignore_from_end"] )) 
+                    break  
+
+
+            if not isRangeExist:
+                bone_array.append(param_json)
+                self.report({'INFO'},"{} new range start:{} end:{}".format(bone_name,param_json["anim_ignore_from_start"],param_json["anim_ignore_from_end"] ))
+        else:
+            bone_dictionary["{}".format(bone_name)] = []
+            bone_dictionary["{}".format(bone_name)].append(param_json)
+            self.report({'INFO'},"New bone added: {} parameter file".format(bone_name))
+
+        global_config.BONE_PARAMETERS_JSON = bone_dictionary
+        out_data = bone_dictionary
+        with open(path, 'w') as output:
+            json.dump(obj=out_data, fp=output, indent=2)
+
+    except OSError as err:
+        self.report('ERROR','appendBoneData Error {} while creating CAfP_temp_bone.json. Please save the blend file'.format(err))
+    except IOError as err:
+        if bpy.data.is_saved:
+            self.report({'ERROR'},"appendBoneData Error {},while creating {}. Please save the blend file".format(err,bpy.path.basename(path)))
+    except json.JSONDecodeError as err:
+        self.report({'ERROR'},"appendBoneData Error {}in json file: {}".format(err, bpy.path.basename(path)))
+
+
+
+
 class BoneAnimatorOffDamp(bpy.types.Operator):
     """Rotational translate animation curves"""
     bl_idname = "cafp.boneanimator"
@@ -200,9 +308,9 @@ class BoneAnimatorOffDamp(bpy.types.Operator):
     def execute(self, context):
 
         # Active Armature
-        obj = context.active_object  # type: bpy.types.Object
-        if obj.type != 'ARMATURE':
-            self.report({'ERROR'},"Selected object {} is not ARMATURE type".format(obj))
+        activeArmature = context.active_object  # type: bpy.types.Object
+        if activeArmature.type != 'ARMATURE':
+            self.report({'ERROR'},"Selected object {} is not ARMATURE type".format(activeArmature))
             return {'CANCELLED'}
     
         #active item 
@@ -213,9 +321,9 @@ class BoneAnimatorOffDamp(bpy.types.Operator):
         
 
         #animation
-        action = obj.animation_data.action
+        action = activeArmature.animation_data.action
 
-        if active_bone is not None and not global_config.IMPORT_DATA:
+        if active_bone is not None and not global_config.IMPORT_DATA_FLAG:
             bone_name = active_bone.basename
 
             damping_weights,angular_offset,edit_range = get_bone_properties(active_bone)
@@ -224,14 +332,68 @@ class BoneAnimatorOffDamp(bpy.types.Operator):
                     angular_offset= angular_offset,tail_crop=edit_range[2], head_crop=edit_range[1], crop_start=edit_range[0])
 
             else:
-                self.report({'ERROR'},"Armature {0} has no animation data".format(obj))
+                self.report({'ERROR'},"Armature {0} has no animation data".format(activeArmature))
                 return {'CANCELLED'}
-        elif global_config.IMPORT_DATA:
-            for bone_ in load_data_bones:
-                bone_name = bone_.basename
-                damping_weights,angular_offset,edit_range = get_bone_properties(bone_)
-                bone_animator(self, act=action,bone_name= bone_name,damp_weights= damping_weights,\
-                    angular_offset= angular_offset,tail_crop=edit_range[2], head_crop=edit_range[1], crop_start=edit_range[0])
+
+        elif global_config.IMPORT_DATA_FLAG:
+            global_config.IMPORT_DATA_FLAG=False 
+            activeBones = activeArmature.pose.bones
+            impBones = global_config.IMPORT_DATA_
+
+            if impBones is not None:
+                self.report({'INFO'},"{} Calling import function on:".format(activeArmature.name))
+                for imKey, imVal in impBones.items():
+                    for currBone in activeBones:
+
+                        curr_bn = currBone.basename
+                        im_bn = imKey
+                        #This manual operation is needed because Mixamo rig starts with strings which are 
+                        #different from one another. for example mixamorigxx:spine where xx is a number
+                        if im_bn.startswith('mixamorig'):
+                            split_im = im_bn.split(":",1)
+                            if len(split_im)==2:
+                                im_bn = split_im[1]
+                        
+                        if curr_bn.startswith('mixamorig'):
+                            split_curr = curr_bn.split(":",1)
+                            if len(split_curr) ==2:
+                                curr_bn = split_curr[1]
+                    
+                        if curr_bn == im_bn:
+                            for item in imVal: #consit of json object for each range
+                                #setattr(currBone,im_props,prp_value)
+                                if item is not None:
+                                    
+                                    x_dp = item["damping_x_scale"]
+                                    y_dp = item["damping_y_scale"]
+                                    z_dp = item["damping_z_scale"]
+                                    damping_weights = Vector((x_dp,y_dp,z_dp))
+
+                                    x_an = item["angular_offset_x"]
+                                    y_an = item["angular_offset_y"]
+                                    z_an = item["angular_offset_z"]
+                                    angular_offset = Vector((x_an,y_an,z_an))
+
+                                    s_crop = 0
+                                    head_crop = item["anim_ignore_from_start"]
+                                    tail_crop = item["anim_ignore_from_end"]
+                                    self.report({'INFO'},"Importing {0} bone for range: head_crop:{1} tail_crop:{2}  :".format(curr_bn,head_crop,tail_crop))
+                                    #change the bone
+                                    bone_animator(self, act=action,bone_name= currBone.basename,damp_weights= damping_weights,\
+                                    angular_offset= angular_offset,tail_crop=tail_crop, head_crop=head_crop, crop_start=s_crop)
+                                    #append the value to the file
+                                    path =bpy.path.abspath("//{}".format(global_config.BONE_PARAMETERS_FILE_NAME))
+                                    appendBoneData(self,active_bone= currBone, param_json= item, path=path)
+                                else:
+                                    self.report({'WARNING'},"{} imported empty property values".format(curr_bn))
+
+            else:
+                self.report({'ERROR'},"IMPORT_DATA_ is empty")
+
+            
+               
+
+            
 
         else:
             self.report({'ERROR'},"No active_bone")
